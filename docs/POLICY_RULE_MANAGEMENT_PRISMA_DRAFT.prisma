@@ -1,0 +1,219 @@
+// Policy Rule Management Prisma Draft
+// 가정:
+// - 본 파일은 "초안"이며, 실제 반영 시 web/prisma/schema.prisma로 병합한다.
+// - 멀티 테넌트가 필요하면 모든 모델에 tenantId와 복합 인덱스를 추가한다.
+// - 작성자/승인자 FK는 기존 User 모델과 연결 가능하지만, 초안에서는 문자열 ID로 둔다.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PolicyRuleType {
+  TIME_BASED
+  AMOUNT_BASED
+  MERCHANT_CATEGORY_BASED
+  DOCUMENT_BASED
+  PATTERN_BASED
+  ORGANIZATION_BASED
+}
+
+enum PolicyRuleStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum PolicySeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum PolicyActionType {
+  FLAG_ONLY
+  REQUIRE_REVIEW
+  AUTO_HOLD
+  AUTO_ESCALATE
+}
+
+enum PolicyApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ConditionLogicalOp {
+  AND
+  OR
+}
+
+enum ConditionOperator {
+  EQ
+  NE
+  GT
+  GTE
+  LT
+  LTE
+  IN
+  NOT_IN
+  EXISTS
+  REGEX
+}
+
+enum ConditionValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  DATETIME
+  ARRAY
+  JSON
+}
+
+enum ScopeUnitType {
+  COMPANY
+  DEPARTMENT
+  COST_CENTER
+  CARD_GROUP
+  USER_ROLE
+}
+
+enum ExceptionTargetType {
+  USER
+  CARD
+  MERCHANT
+  PROJECT
+  TRANSACTION
+}
+
+model PolicyRule {
+  id               String              @id @default(cuid())
+  ruleCode         String              @unique
+  name             String
+  description      String?
+  ruleType         PolicyRuleType
+  severity         PolicySeverity
+  status           PolicyRuleStatus    @default(DRAFT)
+  priority         Int                 @default(100)
+  tagsJson         Json?
+
+  currentVersionId String?
+  currentVersion   PolicyRuleVersion?  @relation("CurrentPolicyRuleVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+
+  versions         PolicyRuleVersion[] @relation("PolicyRuleVersions")
+  scopes           PolicyRuleScope[]
+  exceptions       PolicyRuleException[]
+
+  createdByUserId  String?
+  updatedByUserId  String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  deletedAt        DateTime?
+
+  @@index([status, ruleType, severity])
+  @@index([updatedAt])
+}
+
+model PolicyRuleVersion {
+  id                 String                @id @default(cuid())
+  policyRuleId       String
+  policyRule         PolicyRule            @relation("PolicyRuleVersions", fields: [policyRuleId], references: [id], onDelete: Cascade)
+  versionNo          Int
+
+  approvalStatus     PolicyApprovalStatus  @default(PENDING)
+  isActive           Boolean               @default(false)
+
+  severity           PolicySeverity
+  actionsJson        Json
+  configSnapshotJson Json?
+
+  changeSummary      String?
+  changeReason       String?
+  createdByUserId    String
+  approvedByUserId   String?
+
+  createdAt          DateTime              @default(now())
+  approvedAt         DateTime?
+  activatedAt        DateTime?
+  deactivatedAt      DateTime?
+
+  conditions         PolicyRuleCondition[]
+  scopes             PolicyRuleScope[]
+  exceptions         PolicyRuleException[]
+
+  currentOfRules     PolicyRule[]          @relation("CurrentPolicyRuleVersion")
+
+  @@unique([policyRuleId, versionNo])
+  @@index([policyRuleId, isActive])
+  @@index([approvalStatus, createdAt])
+}
+
+model PolicyRuleCondition {
+  id                  String              @id @default(cuid())
+  policyRuleVersionId String
+  policyRuleVersion   PolicyRuleVersion   @relation(fields: [policyRuleVersionId], references: [id], onDelete: Cascade)
+
+  conditionGroup      Int                 @default(1)
+  logicalOp           ConditionLogicalOp  @default(AND)
+  field               String
+  operator            ConditionOperator
+  valueType           ConditionValueType
+  valueJson           Json
+  orderNo             Int                 @default(1)
+
+  createdAt           DateTime            @default(now())
+
+  @@index([policyRuleVersionId, conditionGroup, orderNo])
+}
+
+model PolicyRuleScope {
+  id                  String             @id @default(cuid())
+  policyRuleVersionId String?
+  policyRuleVersion   PolicyRuleVersion? @relation(fields: [policyRuleVersionId], references: [id], onDelete: Cascade)
+
+  // 빠른 조회를 위해 Rule에도 직접 연결(활성 버전 materialize 용도)
+  policyRuleId        String?
+  policyRule          PolicyRule?        @relation(fields: [policyRuleId], references: [id], onDelete: Cascade)
+
+  scopeUnitType       ScopeUnitType
+  scopeUnitId         String
+  country             String?
+  currency            String?
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+
+  createdAt           DateTime           @default(now())
+
+  @@index([scopeUnitType, scopeUnitId])
+  @@index([policyRuleVersionId])
+  @@index([policyRuleId])
+}
+
+model PolicyRuleException {
+  id                  String               @id @default(cuid())
+  policyRuleVersionId String?
+  policyRuleVersion   PolicyRuleVersion?   @relation(fields: [policyRuleVersionId], references: [id], onDelete: Cascade)
+
+  // 빠른 조회를 위해 Rule에도 직접 연결(활성 버전 materialize 용도)
+  policyRuleId        String?
+  policyRule          PolicyRule?          @relation(fields: [policyRuleId], references: [id], onDelete: Cascade)
+
+  targetType          ExceptionTargetType
+  targetId            String
+  reason              String
+  validFrom           DateTime?
+  validTo             DateTime?
+  approvedByUserId    String?
+  approvedAt          DateTime?
+  createdAt           DateTime             @default(now())
+
+  @@index([targetType, targetId])
+  @@index([policyRuleVersionId])
+  @@index([policyRuleId])
+}

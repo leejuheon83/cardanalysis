@@ -1,0 +1,39 @@
+# Dependencies
+**/node_modules/
+
+# Server (SQLite, uploads)
+server/data/
+*.db
+*.db-journal
+
+# Web (Next.js)
+web/.next/
+web/out/
+web/.env
+web/.env.local
+web/.env.*.local
+web/prisma/dev.db
+web/prisma/dev.db-journal
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Logs & debug
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Test / coverage
+coverage/
+dist/
+
+# TypeScript build info
+*.tsbuildinfo

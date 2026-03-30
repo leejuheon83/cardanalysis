@@ -1,0 +1,2162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>법인카드 모니터링 — 로컬 디자인 미리보기</title>
+  <style>
+    :root {
+      --sbs-blue: #0085ca;
+      --sbs-navy: #005596;
+      --sbs-gold: #f2a900;
+      --sbs-gray: #a7a9ac;
+      --primary-brand: #005596;
+      --primary-50: #eff6ff;
+      --foreground: #0f1e2e;
+      --foreground-muted: #5c6b7a;
+      --surface: #ffffff;
+      --surface-muted: #f8fafc;
+      --border: #e2e8f0;
+      --semantic-suspicious-bg: #fffbeb;
+      --semantic-suspicious-fg: #b45309;
+      --semantic-violation-bg: #fef2f2;
+      --semantic-violation-fg: #b91c1c;
+      --semantic-pending-bg: #eff6ff;
+      --semantic-pending-fg: #005596;
+      --semantic-approved-bg: #ecfdf5;
+      --semantic-approved-fg: #047857;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+      font-size: 14px;
+      color: var(--foreground);
+      background: var(--surface-muted);
+    }
+    .topbar {
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 22px 0 14px;
+      gap: 18px;
+    }
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      text-decoration: none;
+      color: inherit;
+    }
+    .topbar-brand:focus-visible {
+      outline: 2px solid var(--sbs-blue);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+    .topbar-logo {
+      height: 36px;
+      width: auto;
+      display: block;
+      vertical-align: middle;
+    }
+    .topbar-titles {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      min-width: 0;
+    }
+    .topbar h1 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--sbs-navy);
+      letter-spacing: -0.01em;
+    }
+    .topbar span { font-size: 12px; color: var(--sbs-gray); }
+    .topbar-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-logout {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--foreground-muted);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-logout:hover {
+      border-color: var(--sbs-blue);
+      color: var(--sbs-navy);
+    }
+    .layout { display: flex; min-height: calc(100vh - 56px); }
+    .sidebar {
+      width: 224px;
+      background: #eef2f7;
+      border-right: 1px solid var(--border);
+      padding: 16px 0;
+    }
+    .nav-item {
+      padding: 10px 20px;
+      font-size: 13px;
+      color: var(--foreground-muted);
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+    .nav-item:hover:not(.active) {
+      background: rgba(30, 64, 175, 0.06);
+      color: var(--foreground);
+    }
+    .nav-item:focus-visible {
+      outline: 2px solid var(--sbs-blue);
+      outline-offset: -2px;
+    }
+    .nav-item.active {
+      background: var(--primary-50);
+      color: var(--sbs-navy);
+      border-left: 2px solid var(--sbs-blue);
+      font-weight: 600;
+    }
+    main { flex: 1; padding: 24px; overflow: auto; }
+    .page-panel { display: none; }
+    .page-panel.active { display: block; }
+    .page-title { font-size: 24px; font-weight: 600; margin: 0 0 8px; }
+    .page-sub { font-size: 14px; color: var(--foreground-muted); margin: 0 0 24px; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 1023px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .sidebar { display: none; }
+    }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .kpi label { font-size: 12px; color: var(--foreground-muted); display: block; margin-bottom: 8px; }
+    .kpi strong { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .card-h { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      text-align: left;
+      padding: 10px 12px;
+      background: var(--surface-muted);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--foreground-muted);
+    }
+    tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:hover { background: var(--surface-muted); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .badge-pending { background: var(--semantic-pending-bg); color: var(--semantic-pending-fg); border-color: #BFDBFE; }
+    .badge-suspicious { background: var(--semantic-suspicious-bg); color: var(--semantic-suspicious-fg); border-color: #FCD34D; }
+    .badge-violation { background: var(--semantic-violation-bg); color: var(--semantic-violation-fg); border-color: #FECACA; }
+    .badge-approved { background: var(--semantic-approved-bg); color: var(--semantic-approved-fg); border-color: #A7F3D0; }
+    .row-pending { border-left: 3px solid var(--primary-brand); }
+    .ai-box {
+      border: 1px dashed #BFDBFE;
+      background: var(--primary-50);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      max-width: 65ch;
+    }
+    .ai-box h4 { margin: 0 0 8px; font-size: 13px; color: var(--sbs-navy); }
+    .ai-box p { margin: 0; line-height: 1.6; font-size: 13px; }
+    .human-box {
+      border: 1px solid #CBD5E1;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 12px;
+      max-width: 65ch;
+    }
+    .human-box h4 { margin: 0 0 8px; font-size: 13px; }
+    .muted { color: var(--foreground-muted); font-size: 12px; }
+    .tabular { font-variant-numeric: tabular-nums; }
+    footer {
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--foreground-muted);
+    }
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+      background: var(--surface-muted);
+      margin-bottom: 12px;
+    }
+    .upload-zone:hover { border-color: var(--primary-brand); background: var(--primary-50); }
+    .upload-zone input[type="file"] { display: none; }
+    .upload-zone label {
+      cursor: pointer;
+      color: var(--primary-brand);
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .upload-hint { font-size: 12px; color: var(--foreground-muted); margin-top: 8px; }
+    .table-wrap { overflow-x: auto; max-height: 480px; overflow-y: auto; }
+    .table-wrap thead th { position: sticky; top: 0; z-index: 1; }
+    .row-flag-violation { border-left: 3px solid var(--semantic-violation-fg); }
+    .row-flag-pending { border-left: 3px solid var(--primary-brand); }
+    .row-flag-suspicious { border-left: 3px solid var(--semantic-suspicious-fg); }
+    .msg-error { color: #B91C1C; font-size: 13px; margin-top: 8px; }
+    .msg-success { color: var(--semantic-approved-fg); font-size: 13px; margin-top: 8px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      color: var(--foreground);
+    }
+    .btn-primary { background: var(--primary-brand); color: #fff; border-color: var(--primary-brand); }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .reason-cell { max-width: 220px; font-size: 12px; color: var(--foreground-muted); line-height: 1.4; }
+    .input-text {
+      padding: 8px 12px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      min-width: 200px;
+    }
+    .form-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .notify-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .notify-item.unread { background: var(--primary-50); }
+    .empty-state { padding: 32px; text-align: center; color: var(--foreground-muted); font-size: 14px; }
+    .card-h-upload-results {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .upload-results-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+      font-size: 13px;
+    }
+    .upload-view-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: var(--foreground);
+      font-weight: 500;
+    }
+    .upload-view-label input { margin: 0; accent-color: var(--primary-brand); }
+    .table-wrap-upload {
+      max-height: min(72vh, 720px);
+      border-top: 1px solid var(--border);
+      background: var(--surface-muted);
+    }
+    .table-upload-results {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+    }
+    .table-upload-results thead th {
+      background: linear-gradient(180deg, #F1F5F9 0%, #E8EEF4 100%);
+      color: var(--foreground);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+      white-space: nowrap;
+      padding: 12px 14px;
+      border-bottom: 2px solid #CBD5E1;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+    }
+    .table-upload-results tbody td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .table-upload-results .upload-main-row:hover td {
+      background: rgba(30, 64, 175, 0.06);
+    }
+    .table-upload-results .upload-main-row.row-zebra td {
+      background: #FAFBFD;
+    }
+    .table-upload-results .upload-main-row.row-zebra:hover td {
+      background: rgba(30, 64, 175, 0.07);
+    }
+    .table-upload-results.upload-view-compact .col-sticky {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.12);
+      background: var(--surface);
+    }
+    .table-upload-results.upload-view-compact .upload-main-row.row-zebra .col-sticky {
+      background: #FAFBFD;
+    }
+    .table-upload-results.upload-view-compact .upload-main-row:hover .col-sticky {
+      background: #EEF2FF;
+    }
+    .table-upload-results.upload-view-compact th.col-toggle,
+    .table-upload-results.upload-view-compact td.col-toggle {
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+      padding: 8px;
+      text-align: center;
+      left: 0;
+      vertical-align: middle;
+    }
+    .table-upload-results.upload-view-compact th.col-sticky-merchant,
+    .table-upload-results.upload-view-compact td.col-sticky-merchant {
+      left: 40px;
+      min-width: 140px;
+      max-width: 220px;
+      font-weight: 500;
+    }
+    .table-upload-results.upload-view-compact th.col-sticky-merchant-only,
+    .table-upload-results.upload-view-compact td.col-sticky-merchant-only {
+      left: 0;
+      min-width: 140px;
+      max-width: 240px;
+      font-weight: 500;
+    }
+    .row-expand-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 11px;
+      color: var(--primary-brand);
+      line-height: 1;
+    }
+    .row-expand-btn:hover { background: var(--primary-50); border-color: rgba(0, 133, 202, 0.45); }
+    .table-upload-results .reason-cell {
+      max-width: 280px;
+      min-width: 120px;
+    }
+    .upload-view-compact .col-metric {
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .upload-detail-row td {
+      padding: 0 !important;
+      border-bottom: 1px solid var(--border);
+      background: var(--primary-50);
+    }
+    .upload-detail-inner {
+      padding: 14px 16px 16px;
+      border-top: 1px dashed #BFDBFE;
+    }
+    .upload-detail-inner .muted {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px 20px;
+      font-size: 12px;
+    }
+    .detail-grid dt {
+      margin: 0;
+      font-weight: 600;
+      color: var(--foreground-muted);
+      font-size: 11px;
+      text-transform: none;
+    }
+    .detail-grid dd {
+      margin: 2px 0 0;
+      color: var(--foreground);
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .upload-view-full .table-upload-results thead th {
+      white-space: normal;
+      max-width: 140px;
+      vertical-align: bottom;
+      line-height: 1.35;
+    }
+    .upload-filter-bar {
+      padding: 12px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .upload-filter-toolbar {
+      margin-bottom: 0;
+    }
+    .upload-filter-bar select.input-text {
+      min-height: 38px;
+      cursor: pointer;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-brand" href="design-preview.html" aria-label="SBS M&amp;C">
+      <img class="topbar-logo" src="assets/sbs-mnc-logo.png" width="140" height="36" alt="SBS M&amp;C" />
+    </a>
+    <div class="topbar-titles">
+      <h1>법인카드 모니터링</h1>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" class="btn-logout" id="btnLogout">로그아웃</button>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="주 메뉴" role="navigation">
+      <div class="nav-item active" role="menuitem" tabindex="0" data-page="dashboard">대시보드</div>
+      <div class="nav-item" role="menuitem" tabindex="0" data-page="monitor">거래 모니터링</div>
+      <div class="nav-item" role="menuitem" tabindex="0" data-page="violation">위반 검토</div>
+      <div class="nav-item" role="menuitem" tabindex="0" data-page="ai">AI 리스크</div>
+      <div class="nav-item" role="menuitem" tabindex="0" data-page="policy">정책 관리</div>
+      <div class="nav-item" role="menuitem" tabindex="0" data-page="notify">알림</div>
+      <div class="nav-item" role="menuitem" tabindex="0" data-page="audit">감사 로그</div>
+    </aside>
+    <main>
+      <section id="page-dashboard" class="page-panel active" aria-labelledby="dash-title">
+        <h2 class="page-title" id="dash-title">메인 대시보드</h2>
+        <p class="page-sub">엑셀 업로드 시 자동 검토(리스크·상태·사유) · 시맨틱 색 · 표 밀도</p>
+
+        <div class="card">
+          <div class="card-h">엑셀 / CSV 업로드 → 자동 검토</div>
+          <div style="padding: 16px;">
+            <div class="upload-zone" id="dropZone">
+              <label for="fileInput">📤 파일 선택 또는 여기에 끌어다 놓기</label>
+              <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" />
+              <p class="upload-hint">지원: .xlsx, .xls, .csv · 첫 시트 기준 · 헤더 행 포함 권장<br />
+                인식 컬럼 예: <strong>일시/거래일시/날짜</strong>, <strong>금액/이용금액</strong>, <strong>가맹점/상호</strong> (한글·영문 혼용 자동 매칭)<br />
+                <strong>서버 모드</strong> 사용 시: 터미널에서 <code>cd server &amp;&amp; npm start</code> 후 <code>http://localhost:3001/design-preview.html</code> 로 접속하세요.</p>
+            </div>
+            <div class="toolbar" style="flex-direction: column; align-items: flex-start;">
+              <label class="muted" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="useServer" checked />
+                서버에 저장하고 검토 (API · SQLite) — <code id="apiBaseLabel"></code>
+              </label>
+              <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+                <button type="button" class="btn btn-primary" id="btnSample" title="데모용 샘플 데이터로 자동 검토">샘플 데이터로 검토</button>
+                <span class="muted" id="uploadStatus"></span>
+              </div>
+            </div>
+            <p class="msg-error" id="uploadError" hidden></p>
+          </div>
+        </div>
+
+        <div class="kpi-grid" id="kpiGrid">
+          <div class="kpi"><label>총 건수</label><strong class="tabular" id="kpiTotal">—</strong></div>
+          <div class="kpi"><label>검토 대기·의심</label><strong class="tabular" id="kpiReview">—</strong></div>
+          <div class="kpi"><label>위반 의심</label><strong class="tabular" id="kpiViolation">—</strong></div>
+          <div class="kpi"><label>정상</label><strong class="tabular" id="kpiOk">—</strong></div>
+        </div>
+
+        <div class="card" id="uploadedCard" hidden>
+          <div class="card-h card-h-upload-results">
+            <span>업로드 거래 · 자동 검토 결과</span>
+            <div class="upload-results-toolbar" id="uploadViewToolbar" hidden>
+              <span class="muted" style="font-size:12px;">표 보기</span>
+              <label class="upload-view-label"><input type="radio" name="uploadViewMode" value="compact" checked /> 요약 (한눈에)</label>
+              <label class="upload-view-label"><input type="radio" name="uploadViewMode" value="full" /><span id="uploadViewFullLabel">전체 컬럼</span></label>
+            </div>
+          </div>
+          <div class="upload-filter-bar" id="uploadFilterBar" hidden>
+            <div class="toolbar upload-filter-toolbar">
+              <input type="search" class="input-text" id="uploadFilterSearch" placeholder="전체 열·사유에서 검색…" autocomplete="off" style="min-width:220px;" />
+              <label class="muted" style="display:flex;align-items:center;gap:8px;">
+                검토상태
+                <select id="uploadFilterStatus" class="input-text" style="min-width:150px;">
+                  <option value="">전체</option>
+                  <option value="정상">정상</option>
+                  <option value="의심">의심</option>
+                  <option value="검토 대기">검토 대기</option>
+                  <option value="위반 의심">위반 의심</option>
+                </select>
+              </label>
+              <label class="muted" style="display:flex;align-items:center;gap:6px;">
+                리스크
+                <input type="number" id="uploadFilterRiskMin" class="input-text" style="width:68px;min-width:68px;" min="0" max="99" placeholder="최소" />
+                <span class="muted">~</span>
+                <input type="number" id="uploadFilterRiskMax" class="input-text" style="width:68px;min-width:68px;" min="0" max="99" placeholder="최대" />
+              </label>
+              <button type="button" class="btn btn-primary" id="btnUploadFilterApply">필터 적용</button>
+              <button type="button" class="btn" id="btnUploadFilterReset">초기화</button>
+              <span class="muted" id="uploadFilterHint" style="font-size:12px;"></span>
+            </div>
+            <div class="toolbar" style="margin-top:10px;margin-bottom:0;">
+              <button type="button" class="btn btn-primary" id="btnDownloadCsv">CSV 다운로드</button>
+              <button type="button" class="btn btn-primary" id="btnDownloadXlsx">Excel 다운로드</button>
+              <span class="muted" style="font-size:12px;">다운로드는 현재 표에 보이는 행(필터 반영)만 포함합니다.</span>
+            </div>
+          </div>
+          <div class="table-wrap table-wrap-upload">
+            <table id="uploadedTable" class="table-upload-results">
+              <thead id="uploadedHead"></thead>
+              <tbody id="uploadedBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <footer>
+          <code>design-preview.html</code> — 브라우저 전용 파싱(체크 해제) 또는 <strong>서버 API + SQLite 저장</strong>(체크 시, 같은 출처로 페이지를 열어야 함).<br />
+          플레이스홀더 이미지 예: <a href="https://picsum.photos/seed/enterprise-dashboard/1200/600" target="_blank" rel="noopener">picsum 샘플</a>
+        </footer>
+      </section>
+
+      <section id="page-monitor" class="page-panel" aria-labelledby="mon-title">
+        <h2 class="page-title" id="mon-title">거래 모니터링</h2>
+        <p class="page-sub">거래 흐름 요약 · 검색 필터 · 대시보드 업로드 데이터와 연동</p>
+        <div class="toolbar">
+          <input type="search" class="input-text" id="monitorFilter" placeholder="가맹점·일시·금액 검색…" autocomplete="off" />
+          <button type="button" class="btn btn-primary" id="btnMonitorFromUpload">대시보드 업로드 데이터로 채우기</button>
+          <button type="button" class="btn" id="btnMonitorReset">샘플로 초기화</button>
+        </div>
+        <div class="card">
+          <div class="card-h">거래 목록</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>일시</th>
+                  <th>금액</th>
+                  <th>가맹점</th>
+                  <th>리스크</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody id="monitorTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-violation" class="page-panel" aria-labelledby="viol-title">
+        <h2 class="page-title" id="viol-title">위반 검토</h2>
+        <p class="page-sub">위반 의심·의심 건만 집중 검토합니다. 대시보드에서 업로드한 결과를 불러옵니다.</p>
+        <div class="toolbar">
+          <button type="button" class="btn btn-primary" id="btnViolationRefresh">업로드 결과에서 새로고침</button>
+          <span class="muted" id="violationCount"></span>
+        </div>
+        <div class="card">
+          <div class="card-h">검토 대상 거래</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>일시</th>
+                  <th>금액</th>
+                  <th>가맹점</th>
+                  <th>리스크</th>
+                  <th>상태</th>
+                  <th>사유</th>
+                  <th>조치</th>
+                </tr>
+              </thead>
+              <tbody id="violationTableBody"></tbody>
+            </table>
+          </div>
+          <p class="empty-state" id="violationEmpty" hidden>대시보드에서 파일을 업로드하거나 샘플 검토 후 「업로드 결과에서 새로고침」을 눌러 주세요.</p>
+        </div>
+      </section>
+
+      <section id="page-ai" class="page-panel" aria-labelledby="ai-title">
+        <h2 class="page-title" id="ai-title">AI 리스크</h2>
+        <p class="page-sub" id="aiPageSub">
+          업로드 거래와 대시보드 필터 범위를 기준으로 규칙·통계 요약을 생성합니다. 생성형 모델 연동 시 이 영역에 API 응답을 바꿔 넣을 수 있습니다.
+        </p>
+        <div class="toolbar">
+          <button type="button" class="btn btn-primary" id="btnAiRefreshData">업로드 데이터로 요약 갱신</button>
+          <button type="button" class="btn btn-primary" id="btnAiRegenerate">다른 각도로 요약</button>
+        </div>
+        <div class="card">
+          <div class="card-h">리스크 요약 · 검토자 결정</div>
+          <div style="padding: 16px;">
+            <div class="ai-box" id="aiSummaryBox">
+              <h4>요약 <span class="muted" id="aiModelTag">(규칙·통계 기반)</span></h4>
+              <p class="muted" id="aiDataContext" style="font-size:12px;margin:0 0 10px;line-height:1.5;"></p>
+              <p id="aiSummaryText">대시보드에서 데이터를 불러오면 이곳에 자동 요약이 표시됩니다.</p>
+              <p class="muted" style="margin-top:8px;">신뢰도(휴리스틱): <span id="aiConfidenceText">—</span></p>
+            </div>
+            <div class="human-box">
+              <h4>검토자 최종 결정</h4>
+              <p class="muted">요약과 별도로 판단·메모를 남깁니다. 입력 중인 글은 브라우저에 초안 저장되며, 확정 시 이력·감사 로그에 남습니다.</p>
+              <textarea id="aiReviewerNote" class="input-text" style="width:100%;min-height:88px;resize:vertical;margin-top:8px;" placeholder="검토 메모 (자동 초안 저장 · 확정 시 이력 보관)"></textarea>
+              <div style="margin-top:12px;">
+                <button type="button" class="btn btn-primary" id="btnAiSaveNote">메모 확정 (이력·감사 로그)</button>
+              </div>
+            </div>
+            <div class="human-box" id="aiMemoHistoryWrap" style="margin-top:12px;padding:14px 16px;" hidden>
+              <h4 style="font-size:13px;margin:0 0 10px;">최근 확정 메모</h4>
+              <ul id="aiMemoHistoryList" style="margin:0;padding-left:18px;font-size:12px;color:var(--foreground-muted);line-height:1.45;"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-policy" class="page-panel" aria-labelledby="pol-title">
+        <h2 class="page-title" id="pol-title">정책 관리</h2>
+        <p class="page-sub">자동 검토 규칙 이름·키워드·임계값을 브라우저에 저장합니다(로컬 프로토타입).</p>
+        <div class="card">
+          <div class="card-h">규칙 추가</div>
+          <div style="padding: 16px;">
+            <div class="form-row">
+              <input type="text" class="input-text" id="policyName" placeholder="규칙 이름 (예: 고액 거래)" />
+              <input type="text" class="input-text" id="policyKeyword" placeholder="가맹점 키워드 (선택)" />
+              <input type="number" class="input-text" id="policyAmount" placeholder="금액 하한(원)" min="0" step="10000" style="width:160px;" />
+              <button type="button" class="btn btn-primary" id="btnPolicyAdd">추가</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h">등록된 규칙</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>키워드</th>
+                  <th>금액 하한</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="policyTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-notify" class="page-panel" aria-labelledby="notif-title">
+        <h2 class="page-title" id="notif-title">알림</h2>
+        <p class="page-sub">시스템·검토 이벤트 알림(샘플). 읽음 처리 시 감사 로그에 남깁니다.</p>
+        <div class="toolbar">
+          <button type="button" class="btn" id="btnNotifyMarkAll">모두 읽음</button>
+        </div>
+        <div class="card" style="padding:0;">
+          <div id="notifyList"></div>
+        </div>
+      </section>
+
+      <section id="page-audit" class="page-panel" aria-labelledby="audit-title">
+        <h2 class="page-title" id="audit-title">감사 로그</h2>
+        <p class="page-sub">메뉴 이동·정책 변경·알림 읽음·AI 메모 등 주요 동작 기록(최대 200건, 브라우저 저장).</p>
+        <div class="toolbar">
+          <button type="button" class="btn" id="btnAuditClear">로컬 로그 비우기</button>
+        </div>
+        <div class="card">
+          <div class="card-h">최근 이벤트</div>
+          <div class="table-wrap" style="max-height:420px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>시각</th>
+                  <th>동작</th>
+                  <th>세부</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+(function () {
+  var API_BASE =
+    window.location.protocol === 'file:'
+      ? null
+      : window.location.origin.replace(/\/$/, '');
+
+  var apiLabel = document.getElementById('apiBaseLabel');
+  var useServerEl = document.getElementById('useServer');
+  if (apiLabel) {
+    apiLabel.textContent = API_BASE || '(file:// — 서버 API 사용 불가)';
+  }
+  if (useServerEl && !API_BASE) {
+    useServerEl.checked = false;
+    useServerEl.disabled = true;
+  }
+
+  function loginReturnUrl() {
+    return (
+      window.location.pathname + window.location.search + window.location.hash
+    );
+  }
+  function redirectToLogin() {
+    window.location.href =
+      '/login.html?return=' + encodeURIComponent(loginReturnUrl());
+  }
+
+  var btnLogout = document.getElementById('btnLogout');
+  if (btnLogout) {
+    if (!API_BASE) {
+      btnLogout.style.display = 'none';
+    } else {
+      btnLogout.addEventListener('click', function () {
+        fetch(API_BASE + '/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        })
+          .finally(function () {
+            redirectToLogin();
+          });
+      });
+    }
+  }
+
+  var AUDIT_KEY = 'cardMonitorAudit';
+  var AI_MEMO_HISTORY_KEY = 'cardMonitorAiMemoHistory';
+  var AI_MEMO_DRAFT_KEY = 'cardMonitorAiMemoDraft';
+  var POLICY_KEY = 'cardMonitorPolicies';
+  var NOTIF_KEY = 'cardMonitorNotifs';
+  var PAGE_LABELS = {
+    dashboard: '대시보드',
+    monitor: '거래 모니터링',
+    violation: '위반 검토',
+    ai: 'AI 리스크',
+    policy: '정책 관리',
+    notify: '알림',
+    audit: '감사 로그',
+  };
+
+  function auditLog(action, detail) {
+    try {
+      var logs = JSON.parse(localStorage.getItem(AUDIT_KEY) || '[]');
+      logs.unshift({
+        t: new Date().toISOString(),
+        action: action,
+        detail: detail || '',
+      });
+      localStorage.setItem(AUDIT_KEY, JSON.stringify(logs.slice(0, 200)));
+      renderAuditTable();
+    } catch (e) {}
+  }
+
+  function renderAuditTable() {
+    var body = document.getElementById('auditTableBody');
+    if (!body) return;
+    var logs = [];
+    try {
+      logs = JSON.parse(localStorage.getItem(AUDIT_KEY) || '[]');
+    } catch (e) {}
+    body.innerHTML = '';
+    if (!logs.length) {
+      var tr0 = document.createElement('tr');
+      var td0 = document.createElement('td');
+      td0.colSpan = 3;
+      td0.className = 'muted';
+      td0.textContent = '기록이 없습니다.';
+      tr0.appendChild(td0);
+      body.appendChild(tr0);
+      return;
+    }
+    logs.forEach(function (row) {
+      var tr = document.createElement('tr');
+      var td1 = document.createElement('td');
+      td1.className = 'tabular';
+      td1.textContent = row.t.replace('T', ' ').slice(0, 19);
+      var td2 = document.createElement('td');
+      td2.textContent = row.action;
+      var td3 = document.createElement('td');
+      td3.textContent = row.detail;
+      td3.style.fontSize = '12px';
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+      tr.appendChild(td3);
+      body.appendChild(tr);
+    });
+  }
+
+  function showPage(pageId, options) {
+    options = options || {};
+    document.querySelectorAll('.page-panel').forEach(function (p) {
+      p.classList.toggle('active', p.id === 'page-' + pageId);
+    });
+    document.querySelectorAll('.nav-item').forEach(function (n) {
+      n.classList.toggle('active', n.getAttribute('data-page') === pageId);
+    });
+    if (history.replaceState) {
+      try {
+        history.replaceState(null, '', '#' + pageId);
+      } catch (e) {}
+    }
+    if (!options.silent) {
+      auditLog('화면 이동', PAGE_LABELS[pageId] || pageId);
+    }
+    if (pageId === 'violation') refreshViolationTable();
+    if (pageId === 'monitor') renderMonitorTable();
+    if (pageId === 'policy') renderPolicyTable();
+    if (pageId === 'notify') renderNotifyList();
+    if (pageId === 'ai') {
+      refreshAiRiskPanel();
+      var taAiNav = document.getElementById('aiReviewerNote');
+      if (taAiNav) {
+        try {
+          taAiNav.value = localStorage.getItem(AI_MEMO_DRAFT_KEY) || '';
+        } catch (e) {}
+      }
+    }
+  }
+
+  function renderFromApi(payload) {
+    paintUploadTable(payload.headers, payload.rows, payload.kpi);
+  }
+
+  function uploadToServer(file) {
+    var err = document.getElementById('uploadError');
+    err.hidden = true;
+    document.getElementById('uploadStatus').textContent = '서버 업로드 중…';
+    var fd = new FormData();
+    fd.append('file', file);
+    fetch(API_BASE + '/api/import/upload', {
+      method: 'POST',
+      credentials: 'include',
+      body: fd,
+    })
+      .then(function (res) {
+        if (res.status === 401) {
+          redirectToLogin();
+          return Promise.reject(new Error('로그인이 필요합니다.'));
+        }
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data.error || res.statusText);
+          return data;
+        });
+      })
+      .then(function (data) {
+        document.getElementById('uploadStatus').textContent =
+          '배치 ID: ' +
+          data.batchId +
+          ' · ' +
+          data.kpi.total +
+          '건 저장 및 검토 완료';
+        var rows = data.rows.map(function (r) {
+          return {
+            raw: r.raw,
+            risk_score: r.risk_score,
+            review_status: r.review_status,
+            badge_class: r.badge_class,
+            row_class: r.row_class || '',
+            reason: r.reason,
+          };
+        });
+        renderFromApi({ headers: data.headers, rows: rows, kpi: data.kpi });
+      })
+      .catch(function (ex) {
+        err.textContent = '서버 업로드 실패: ' + (ex.message || String(ex));
+        err.hidden = false;
+        document.getElementById('uploadStatus').textContent = '';
+      });
+  }
+
+  function postSampleToServer() {
+    var err = document.getElementById('uploadError');
+    err.hidden = true;
+    document.getElementById('uploadStatus').textContent = '서버 샘플 적재 중…';
+    fetch(API_BASE + '/api/import/sample', {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then(function (res) {
+        if (res.status === 401) {
+          redirectToLogin();
+          return Promise.reject(new Error('로그인이 필요합니다.'));
+        }
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data.error || res.statusText);
+          return data;
+        });
+      })
+      .then(function (data) {
+        document.getElementById('uploadStatus').textContent =
+          '샘플 배치 ID: ' + data.batchId + ' · DB 저장됨';
+        var rows = data.rows.map(function (r) {
+          return {
+            raw: r.raw,
+            risk_score: r.risk_score,
+            review_status: r.review_status,
+            badge_class: r.badge_class,
+            row_class: r.row_class || '',
+            reason: r.reason,
+          };
+        });
+        renderFromApi({ headers: data.headers, rows: rows, kpi: data.kpi });
+      })
+      .catch(function (ex) {
+        err.textContent = '서버 샘플 실패: ' + (ex.message || String(ex));
+        err.hidden = false;
+        document.getElementById('uploadStatus').textContent = '';
+      });
+  }
+
+  var AMOUNT_KEYS = ['금액', '이용금액', '결제금액', '승인금액', '공급가액', 'amount', 'amt', 'payment', 'total'];
+  var DATE_KEYS = ['일시', '거래일시', '승인일', '승인일시', '이용일', '거래일자', '날짜', 'date', 'datetime', 'time'];
+  var MERCHANT_KEYS = ['가맹점', '가맹점명', '상호', 'merchant', 'store', '가맹점명칭'];
+  var SENSITIVE = ['유흥', '룸싸롱', '룸', '호텔', '모텔', '주점', '술집', 'BAR', 'CASINO', '노래방', '안마'];
+
+  function norm(s) {
+    return String(s == null ? '' : s).replace(/\s/g, '').toLowerCase();
+  }
+
+  function matchKey(header, keys) {
+    var h = norm(header);
+    for (var i = 0; i < keys.length; i++) {
+      if (h.indexOf(norm(keys[i])) !== -1) return true;
+    }
+    return false;
+  }
+
+  function pickCol(raw, headers, keyList) {
+    if (!raw) return '—';
+    for (var i = 0; i < headers.length; i++) {
+      var hn = headers[i];
+      if (matchKey(hn, keyList)) {
+        var v = raw[hn];
+        return v != null && v !== '' ? String(v) : '—';
+      }
+    }
+    return '—';
+  }
+
+  var COMPACT_RULES = [
+    ['가맹점', '가맹점명', '상호', 'merchant'],
+    ['승인일', '일시', '거래일', '날짜', '이용일', '승인일시'],
+    ['승인시각', '시각', '시간'],
+    ['공급가액', '금액', '승인금액', '이용금액', '결제금액'],
+    ['작성자', '사원', '이름', '카드'],
+    ['품목', '적요', '내역'],
+    ['계정', '비용', '계정과목'],
+    ['승인번호'],
+    ['주소', '지역', '거래지'],
+  ];
+  var REVIEW_HEADERS = ['리스크', '검토상태', '자동검토사유'];
+
+  function pickCompactColumns(headers) {
+    var used = Object.create(null);
+    var picked = [];
+    COMPACT_RULES.forEach(function (rule) {
+      for (var i = 0; i < headers.length; i++) {
+        var h = headers[i];
+        if (used[h]) continue;
+        var hit = false;
+        for (var k = 0; k < rule.length; k++) {
+          if (matchKey(h, [rule[k]])) {
+            hit = true;
+            break;
+          }
+        }
+        if (hit) {
+          picked.push(h);
+          used[h] = true;
+          break;
+        }
+      }
+    });
+    if (picked.length < 5) {
+      for (var j = 0; j < headers.length && picked.length < 8; j++) {
+        var hj = headers[j];
+        if (!used[hj]) {
+          picked.push(hj);
+          used[hj] = true;
+        }
+      }
+    }
+    return picked.slice(0, 8);
+  }
+
+  function getSecondaryColumns(headers, primary) {
+    var set = Object.create(null);
+    primary.forEach(function (p) {
+      set[p] = true;
+    });
+    return headers.filter(function (h) {
+      return !set[h];
+    });
+  }
+
+  function formatCellDisplay(headerKey, value) {
+    if (value == null || value === '') return '—';
+    return String(value);
+  }
+
+  function computeKpiFromRows(rows) {
+    var total = rows.length;
+    var reviewPending = 0, viol = 0, ok = 0;
+    rows.forEach(function (r) {
+      var st = r.review_status;
+      if (st === '위반 의심') viol++;
+      else if (st === '정상') ok++;
+      else reviewPending++;
+    });
+    return { total: total, reviewPending: reviewPending, violation: viol, ok: ok };
+  }
+
+  function uploadFiltersActive() {
+    var sEl = document.getElementById('uploadFilterSearch');
+    var stEl = document.getElementById('uploadFilterStatus');
+    var rminEl = document.getElementById('uploadFilterRiskMin');
+    var rmaxEl = document.getElementById('uploadFilterRiskMax');
+    var q = (sEl && sEl.value) || '';
+    var st = (stEl && stEl.value) || '';
+    var rmin = rminEl && rminEl.value !== '' ? rminEl.value : '';
+    var rmax = rmaxEl && rmaxEl.value !== '' ? rmaxEl.value : '';
+    return !!(q.trim() || st || rmin !== '' || rmax !== '');
+  }
+
+  function filterUploadRows(rows, headers) {
+    var sEl = document.getElementById('uploadFilterSearch');
+    var stEl = document.getElementById('uploadFilterStatus');
+    var rminEl = document.getElementById('uploadFilterRiskMin');
+    var rmaxEl = document.getElementById('uploadFilterRiskMax');
+    var q = norm((sEl && sEl.value) || '');
+    var st = (stEl && stEl.value) || '';
+    var rmin = rminEl && rminEl.value !== '' ? Number(rminEl.value) : null;
+    var rmax = rmaxEl && rmaxEl.value !== '' ? Number(rmaxEl.value) : null;
+    return rows.filter(function (row) {
+      if (st && row.review_status !== st) return false;
+      if (rmin != null && !isNaN(rmin) && row.risk_score < rmin) return false;
+      if (rmax != null && !isNaN(rmax) && row.risk_score > rmax) return false;
+      if (q) {
+        var parts = [String(row.review_status), String(row.reason), String(row.risk_score)];
+        if (row.raw && typeof row.raw === 'object') {
+          Object.keys(row.raw).forEach(function (k) {
+            parts.push(String(row.raw[k]));
+          });
+        }
+        var hay = norm(parts.join(' '));
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function getRowsForUploadTable() {
+    var f = window.__uploadFull;
+    if (!f || !f.rows) return [];
+    if (!uploadFiltersActive()) return f.rows;
+    return filterUploadRows(f.rows, f.headers);
+  }
+
+  function refreshUploadTableView() {
+    var f = window.__uploadFull;
+    if (!f || !f.headers) return;
+    var rows = getRowsForUploadTable();
+    var kpi = computeKpiFromRows(rows);
+    paintUploadTable(f.headers, rows, kpi, { displayOnly: true });
+    refreshAiRiskPanel();
+  }
+
+  function escapeCsvField(val) {
+    var s = String(val == null ? '' : val);
+    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function downloadUploadAsCsv() {
+    var f = window.__uploadFull;
+    if (!f || !f.rows.length) return;
+    var rows = getRowsForUploadTable();
+    var headers = f.headers.slice();
+    var outH = headers.concat(REVIEW_HEADERS);
+    var lines = [outH.map(escapeCsvField).join(',')];
+    rows.forEach(function (row) {
+      var cells = headers.map(function (h) {
+        return escapeCsvField(row.raw[h]);
+      });
+      cells.push(escapeCsvField(row.risk_score));
+      cells.push(escapeCsvField(row.review_status));
+      cells.push(escapeCsvField(row.reason));
+      lines.push(cells.join(','));
+    });
+    var blob = new Blob(['\ufeff' + lines.join('\r\n')], {
+      type: 'text/csv;charset=utf-8;',
+    });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '법인카드_검토결과_' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  }
+
+  function downloadUploadAsXlsx() {
+    if (typeof XLSX === 'undefined') {
+      alert('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결 후 새로고침해 주세요.');
+      return;
+    }
+    var f = window.__uploadFull;
+    if (!f || !f.rows.length) return;
+    var rows = getRowsForUploadTable();
+    var headers = f.headers.slice();
+    var aoa = [];
+    aoa.push(headers.concat(REVIEW_HEADERS));
+    rows.forEach(function (row) {
+      var line = headers.map(function (h) {
+        return row.raw[h];
+      });
+      line.push(row.risk_score, row.review_status, row.reason);
+      aoa.push(line);
+    });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '검토결과');
+    XLSX.writeFile(wb, '법인카드_검토결과_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+  }
+
+  var _uploadSearchDebounce = null;
+
+  function paintUploadTable(headers, rows, kpi, options) {
+    options = options || {};
+    var displayOnly = !!options.displayOnly;
+
+    window.__lastUploadPaint = { headers: headers.slice(), rows: rows, kpi: kpi };
+    var head = document.getElementById('uploadedHead');
+    var body = document.getElementById('uploadedBody');
+    var tbl = document.getElementById('uploadedTable');
+    var toolbar = document.getElementById('uploadViewToolbar');
+    var fullLabel = document.getElementById('uploadViewFullLabel');
+    if (!head || !body || !tbl) return;
+
+    var modeEl = document.querySelector('input[name="uploadViewMode"]:checked');
+    var mode = modeEl ? modeEl.value : 'compact';
+    var useCompact = mode === 'compact' && headers.length > 6;
+    if (fullLabel) fullLabel.textContent = '전체 컬럼 (' + headers.length + '개)';
+    if (toolbar) toolbar.hidden = headers.length <= 6;
+
+    var primary = useCompact ? pickCompactColumns(headers) : headers.slice();
+    var secondary = useCompact ? getSecondaryColumns(headers, primary) : [];
+    var showToggle = useCompact && secondary.length > 0;
+
+    tbl.classList.toggle('upload-view-compact', useCompact);
+    tbl.classList.toggle('upload-view-full', !useCompact);
+
+    head.innerHTML = '';
+    body.innerHTML = '';
+
+    var hr = document.createElement('tr');
+    if (showToggle) {
+      var thToggle = document.createElement('th');
+      thToggle.className = 'col-toggle col-sticky';
+      thToggle.innerHTML = '&nbsp;';
+      hr.appendChild(thToggle);
+    }
+    primary.forEach(function (h, colIdx) {
+      var th = document.createElement('th');
+      th.textContent = h;
+      if (useCompact) {
+        if (colIdx === 0) {
+          th.classList.add('col-sticky');
+          th.classList.add(showToggle ? 'col-sticky-merchant' : 'col-sticky-merchant-only');
+        } else {
+          th.classList.add('col-metric');
+        }
+      }
+      hr.appendChild(th);
+    });
+    REVIEW_HEADERS.forEach(function (h) {
+      var th = document.createElement('th');
+      th.textContent = h;
+      if (h === '리스크') th.classList.add('col-metric');
+      if (h === '자동검토사유') th.classList.add('reason-cell');
+      hr.appendChild(th);
+    });
+    head.appendChild(hr);
+
+    rows.forEach(function (row, rowIdx) {
+      var tr = document.createElement('tr');
+      tr.className =
+        'upload-main-row' +
+        (rowIdx % 2 ? ' row-zebra' : '') +
+        (row.row_class ? ' ' + row.row_class : '');
+
+      if (showToggle) {
+        var tdT = document.createElement('td');
+        tdT.className = 'col-toggle col-sticky';
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'row-expand-btn';
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', '나머지 컬럼 펼치기');
+        btn.textContent = '▶';
+        tdT.appendChild(btn);
+        tr.appendChild(tdT);
+      }
+
+      primary.forEach(function (h, colIdx) {
+        var td = document.createElement('td');
+        td.className = 'tabular';
+        if (useCompact) {
+          if (colIdx === 0) {
+            td.classList.add('col-sticky');
+            td.classList.add(showToggle ? 'col-sticky-merchant' : 'col-sticky-merchant-only');
+          } else {
+            td.classList.add('col-metric');
+          }
+        }
+        td.textContent = formatCellDisplay(h, row.raw[h]);
+        tr.appendChild(td);
+      });
+
+      var tdR = document.createElement('td');
+      tdR.className = 'tabular col-metric';
+      tdR.textContent = String(row.risk_score);
+      tr.appendChild(tdR);
+
+      var tdS = document.createElement('td');
+      tdS.innerHTML =
+        '<span class="badge ' + row.badge_class + '">' + row.review_status + '</span>';
+      tr.appendChild(tdS);
+
+      var tdY = document.createElement('td');
+      tdY.className = 'reason-cell';
+      tdY.textContent = row.reason;
+      tr.appendChild(tdY);
+
+      body.appendChild(tr);
+
+      if (showToggle) {
+        var trD = document.createElement('tr');
+        trD.className = 'upload-detail-row';
+        trD.hidden = true;
+        var tdD = document.createElement('td');
+        tdD.colSpan = primary.length + REVIEW_HEADERS.length + 1;
+        var inner = document.createElement('div');
+        inner.className = 'upload-detail-inner';
+        var cap = document.createElement('span');
+        cap.className = 'muted';
+        cap.textContent = '나머지 엑셀 필드 · ' + secondary.length + '개';
+        inner.appendChild(cap);
+        var grid = document.createElement('dl');
+        grid.className = 'detail-grid';
+        secondary.forEach(function (key) {
+          var dt = document.createElement('dt');
+          dt.textContent = key;
+          var dd = document.createElement('dd');
+          dd.textContent = formatCellDisplay(key, row.raw[key]);
+          grid.appendChild(dt);
+          grid.appendChild(dd);
+        });
+        inner.appendChild(grid);
+        tdD.appendChild(inner);
+        trD.appendChild(tdD);
+        body.appendChild(trD);
+
+        btn.addEventListener('click', function () {
+          var open = trD.hidden;
+          trD.hidden = !open;
+          btn.textContent = open ? '▼' : '▶';
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      }
+    });
+
+    document.getElementById('kpiTotal').textContent = String(kpi.total);
+    document.getElementById('kpiReview').textContent = String(kpi.reviewPending);
+    document.getElementById('kpiViolation').textContent = String(kpi.violation);
+    document.getElementById('kpiOk').textContent = String(kpi.ok);
+    document.getElementById('uploadedCard').hidden = false;
+
+    if (!displayOnly) {
+      var fs = document.getElementById('uploadFilterSearch');
+      var fst = document.getElementById('uploadFilterStatus');
+      var fr1 = document.getElementById('uploadFilterRiskMin');
+      var fr2 = document.getElementById('uploadFilterRiskMax');
+      if (fs) fs.value = '';
+      if (fst) fst.value = '';
+      if (fr1) fr1.value = '';
+      if (fr2) fr2.value = '';
+      window.__uploadFull = {
+        headers: headers.slice(),
+        rows: rows,
+        kpi: kpi,
+      };
+      window.__uploadState = {
+        headers: headers.slice(),
+        rows: rows.map(function (r) {
+          return {
+            raw: r.raw,
+            risk_score: r.risk_score,
+            review_status: r.review_status,
+            badge_class: r.badge_class,
+            row_class: r.row_class || '',
+            reason: r.reason,
+          };
+        }),
+      };
+    }
+
+    var filterBar = document.getElementById('uploadFilterBar');
+    if (filterBar) filterBar.hidden = false;
+    var filterHint = document.getElementById('uploadFilterHint');
+    if (filterHint) {
+      var base = window.__uploadFull && window.__uploadFull.rows ? window.__uploadFull.rows.length : 0;
+      if (base === 0 || rows.length === base) filterHint.textContent = '';
+      else
+        filterHint.textContent =
+          '전체 ' + base + '건 중 ' + rows.length + '건 표시(필터 적용)';
+    }
+
+    if (!displayOnly) {
+      refreshAiRiskPanel();
+    }
+  }
+
+  function parseAmount(v) {
+    if (v == null || v === '') return 0;
+    if (typeof v === 'number' && !isNaN(v)) return v;
+    var s = String(v).replace(/[,₩$원\s]/g, '').trim();
+    var n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function autoReview(row) {
+    var amount = row._amount || 0;
+    var merchant = String(row._merchant || '');
+    var risk = 8;
+    var flags = [];
+
+    if (amount >= 1000000) { risk += 45; flags.push('고액(100만원 이상)'); }
+    else if (amount >= 500000) { risk += 32; flags.push('고액(50만원 이상)'); }
+    else if (amount >= 200000) { risk += 18; flags.push('중고액(20만원 이상)'); }
+
+    var mu = merchant.toUpperCase();
+    for (var i = 0; i < SENSITIVE.length; i++) {
+      var w = SENSITIVE[i];
+      if (merchant.indexOf(w) !== -1 || mu.indexOf(w.toUpperCase()) !== -1) {
+        risk += 28;
+        flags.push('금지/주의 업종 키워드: ' + w);
+        break;
+      }
+    }
+
+    risk = Math.min(99, Math.round(risk));
+
+    var status, badge, rowClass, reason;
+    if (risk >= 72) {
+      status = '위반 의심'; badge = 'badge-violation'; rowClass = 'row-flag-violation';
+    } else if (risk >= 48) {
+      status = '검토 대기'; badge = 'badge-pending'; rowClass = 'row-flag-pending';
+    } else if (risk >= 28) {
+      status = '의심'; badge = 'badge-suspicious'; rowClass = 'row-flag-suspicious';
+    } else {
+      status = '정상'; badge = 'badge-approved'; rowClass = '';
+    }
+    reason = flags.length ? flags.join(' · ') : '자동 규칙 미충족(정상 구간)';
+
+    return { risk: risk, status: status, badge: badge, rowClass: rowClass, reason: reason };
+  }
+
+  function mapHeaders(headers) {
+    var idxAmount = -1, idxDate = -1, idxMerchant = -1;
+    for (var c = 0; c < headers.length; c++) {
+      var h = headers[c];
+      if (idxAmount < 0 && matchKey(h, AMOUNT_KEYS)) idxAmount = c;
+      if (idxDate < 0 && matchKey(h, DATE_KEYS)) idxDate = c;
+      if (idxMerchant < 0 && matchKey(h, MERCHANT_KEYS)) idxMerchant = c;
+    }
+    return { idxAmount: idxAmount, idxDate: idxDate, idxMerchant: idxMerchant, headers: headers };
+  }
+
+  function sheetToObjects(worksheet) {
+    var rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+    if (!rows.length) return { objects: [], displayHeaders: [] };
+    var headers = rows[0].map(function (h, i) {
+      var t = String(h).trim();
+      return t || ('열' + (i + 1));
+    });
+    var colMap = mapHeaders(headers);
+    var objects = [];
+    for (var r = 1; r < rows.length; r++) {
+      var line = rows[r];
+      var empty = true;
+      for (var j = 0; j < line.length; j++) {
+        if (line[j] !== '' && line[j] != null) { empty = false; break; }
+      }
+      if (empty) continue;
+      var o = {};
+      for (var c = 0; c < headers.length; c++) {
+        o[headers[c]] = line[c];
+      }
+      o._amount = colMap.idxAmount >= 0 ? parseAmount(line[colMap.idxAmount]) : 0;
+      o._merchant = colMap.idxMerchant >= 0 ? line[colMap.idxMerchant] : '';
+      o._date = colMap.idxDate >= 0 ? line[colMap.idxDate] : '';
+      objects.push(o);
+    }
+    return { objects: objects, displayHeaders: headers };
+  }
+
+  function renderTable(objects, displayHeaders) {
+    var pending = 0, viol = 0, ok = 0;
+    var savedRows = [];
+    objects.forEach(function (o) {
+      var ev = autoReview(o);
+      if (ev.status === '위반 의심') viol++;
+      else if (ev.status === '정상') ok++;
+      else pending++;
+      savedRows.push({
+        raw: o,
+        risk_score: ev.risk,
+        review_status: ev.status,
+        badge_class: ev.badge,
+        row_class: ev.rowClass,
+        reason: ev.reason,
+      });
+    });
+    paintUploadTable(displayHeaders, savedRows, {
+      total: objects.length,
+      reviewPending: pending,
+      violation: viol,
+      ok: ok,
+    });
+  }
+
+  function processWorkbook(wb) {
+    var err = document.getElementById('uploadError');
+    err.hidden = true;
+    var firstName = wb.SheetNames[0];
+    var ws = wb.Sheets[firstName];
+    var parsed = sheetToObjects(ws);
+    if (!parsed.objects.length) {
+      err.textContent = '데이터 행이 없습니다. 첫 행을 헤더로 두고 거래 내역을 입력해 주세요.';
+      err.hidden = false;
+      return;
+    }
+    document.getElementById('uploadStatus').textContent =
+      '시트: ' + firstName + ' · ' + parsed.objects.length + '건 자동 검토 완료';
+    renderTable(parsed.objects, parsed.displayHeaders);
+  }
+
+  function handleFile(file) {
+    var err = document.getElementById('uploadError');
+    err.hidden = true;
+    document.getElementById('uploadStatus').textContent = '처리 중…';
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var data = new Uint8Array(e.target.result);
+        var wb = XLSX.read(data, { type: 'array' });
+        processWorkbook(wb);
+      } catch (ex) {
+        err.textContent = '파일을 읽지 못했습니다: ' + (ex.message || String(ex));
+        err.hidden = false;
+        document.getElementById('uploadStatus').textContent = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function handleCsvText(text, name) {
+    var err = document.getElementById('uploadError');
+    err.hidden = true;
+    try {
+      var wb = XLSX.read(text, { type: 'string', sheetRows: 0 });
+      processWorkbook(wb);
+      document.getElementById('uploadStatus').textContent += ' (' + name + ')';
+    } catch (ex) {
+      err.textContent = 'CSV 처리 실패: ' + (ex.message || String(ex));
+      err.hidden = false;
+    }
+  }
+
+  document.getElementById('fileInput').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    var useServer = useServerEl && useServerEl.checked && API_BASE;
+    if (useServer) {
+      uploadToServer(f);
+      e.target.value = '';
+      return;
+    }
+    if (/\.csv$/i.test(f.name)) {
+      var r = new FileReader();
+      r.onload = function () { handleCsvText(r.result, f.name); };
+      r.readAsText(f, 'UTF-8');
+      document.getElementById('uploadStatus').textContent = '처리 중…';
+    } else {
+      handleFile(f);
+    }
+    e.target.value = '';
+  });
+
+  var dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--primary-brand)';
+  });
+  dropZone.addEventListener('dragleave', function () {
+    dropZone.style.borderColor = '';
+  });
+  dropZone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dropZone.style.borderColor = '';
+    var f = e.dataTransfer.files[0];
+    if (!f) return;
+    var useServer = useServerEl && useServerEl.checked && API_BASE;
+    if (useServer) {
+      uploadToServer(f);
+      return;
+    }
+    if (/\.csv$/i.test(f.name)) {
+      var r = new FileReader();
+      r.onload = function () { handleCsvText(r.result, f.name); };
+      r.readAsText(f, 'UTF-8');
+      document.getElementById('uploadStatus').textContent = '처리 중…';
+    } else {
+      handleFile(f);
+    }
+  });
+
+  function runSampleReview() {
+    if (useServerEl && useServerEl.checked && API_BASE) {
+      postSampleToServer();
+      return;
+    }
+    if (typeof XLSX === 'undefined') return;
+    var ws = XLSX.utils.aoa_to_sheet([
+      ['거래일시', '가맹점명', '이용금액', '비고'],
+      ['2025-03-26 12:30', '○○식당', 35000, ''],
+      ['2025-03-26 14:00', '△△유흥주점', 120000, ''],
+      ['2025-03-25 09:00', '□□전자', 1250000, '고액'],
+      ['2025-03-24 18:00', '◇◇마트', 89000, ''],
+      ['2025-03-23 22:00', 'Night BAR Seoul', 450000, '']
+    ]);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '거래내역');
+    processWorkbook(wb);
+    document.getElementById('uploadStatus').textContent = '샘플 데이터로 자동 검토 완료';
+  }
+
+  document.getElementById('btnSample').addEventListener('click', runSampleReview);
+
+  var MONITOR_SAMPLE = [
+    { date: '2025-03-26 14:02', amount: '₩182,000', merchant: '○○마트', risk: 78, status: '검토 대기', badge: 'badge-pending', rowClass: 'row-pending' },
+    { date: '2025-03-26 11:30', amount: '₩45,000', merchant: '△△카페', risk: 52, status: '의심', badge: 'badge-suspicious', rowClass: 'row-flag-suspicious' },
+    { date: '2025-03-25 09:10', amount: '₩920,000', merchant: '□□전자', risk: 91, status: '위반 의심', badge: 'badge-violation', rowClass: 'row-flag-violation' },
+    { date: '2025-03-24 16:00', amount: '₩12,000', merchant: '◇◇주유소', risk: 18, status: '정상', badge: 'badge-approved', rowClass: '' },
+  ];
+  var monitorRows = MONITOR_SAMPLE.slice();
+
+  function renderMonitorTable() {
+    var body = document.getElementById('monitorTableBody');
+    if (!body) return;
+    var q = (document.getElementById('monitorFilter') || {}).value || '';
+    q = norm(q);
+    body.innerHTML = '';
+    monitorRows.forEach(function (row) {
+      var hay = norm([row.date, row.amount, row.merchant, row.status, String(row.risk)].join(' '));
+      if (q && hay.indexOf(q) === -1) return;
+      var tr = document.createElement('tr');
+      if (row.rowClass) tr.className = row.rowClass;
+      [['date', 'tabular'], ['amount', 'tabular'], ['merchant', ''], ['risk', 'tabular'], ['status', '']].forEach(function (pair, idx) {
+        var td = document.createElement('td');
+        td.className = pair[1];
+        if (idx === 4) {
+          td.innerHTML = '<span class="badge ' + row.badge + '">' + row.status + '</span>';
+        } else {
+          td.textContent = row[pair[0]];
+        }
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+  }
+
+  function syncMonitorFromUpload() {
+    var s = window.__uploadState;
+    if (!s || !s.rows.length) {
+      auditLog('거래 모니터링', '불러올 업로드 데이터가 없습니다');
+      return;
+    }
+    monitorRows = s.rows.map(function (r) {
+      var raw = r.raw || {};
+      return {
+        date: pickCol(raw, s.headers, DATE_KEYS),
+        amount: pickCol(raw, s.headers, AMOUNT_KEYS),
+        merchant: pickCol(raw, s.headers, MERCHANT_KEYS),
+        risk: r.risk_score,
+        status: r.review_status,
+        badge: r.badge_class,
+        rowClass: r.row_class || '',
+      };
+    });
+    renderMonitorTable();
+    auditLog('거래 모니터링', '업로드 데이터 ' + monitorRows.length + '건 반영');
+  }
+
+  function refreshViolationTable() {
+    var body = document.getElementById('violationTableBody');
+    var empty = document.getElementById('violationEmpty');
+    var countEl = document.getElementById('violationCount');
+    if (!body) return;
+    body.innerHTML = '';
+    var s = window.__uploadState;
+    if (!s || !s.rows.length) {
+      if (empty) empty.hidden = false;
+      if (countEl) countEl.textContent = '';
+      return;
+    }
+    if (empty) empty.hidden = true;
+    var need = s.rows.filter(function (r) {
+      var st = r.review_status;
+      return st === '위반 의심' || st === '의심' || st === '검토 대기';
+    });
+    if (countEl) countEl.textContent = need.length ? need.length + '건 검토 대상' : '검토 대상 없음';
+    if (!need.length) {
+      if (empty) {
+        empty.hidden = false;
+        empty.textContent =
+          '현재 업로드 결과에 검토 대기·의심·위반 의심 상태인 건이 없습니다. (정상만 있는 경우)';
+      }
+      return;
+    }
+    need.forEach(function (r) {
+      var raw = r.raw || {};
+      var tr = document.createElement('tr');
+      if (r.row_class) tr.className = r.row_class;
+      var cells = [
+        pickCol(raw, s.headers, DATE_KEYS),
+        pickCol(raw, s.headers, AMOUNT_KEYS),
+        pickCol(raw, s.headers, MERCHANT_KEYS),
+        String(r.risk_score),
+      ];
+      cells.forEach(function (text) {
+        var td = document.createElement('td');
+        td.className = 'tabular';
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      var tdS = document.createElement('td');
+      tdS.innerHTML = '<span class="badge ' + r.badge_class + '">' + r.review_status + '</span>';
+      tr.appendChild(tdS);
+      var tdY = document.createElement('td');
+      tdY.className = 'reason-cell';
+      tdY.textContent = r.reason || '';
+      tr.appendChild(tdY);
+      var tdA = document.createElement('td');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn';
+      btn.textContent = '조치 기록';
+      (function (reason, merchant) {
+        btn.addEventListener('click', function () {
+          auditLog('위반 검토 조치', merchant + ' — ' + reason);
+        });
+      })(r.reason, pickCol(raw, s.headers, MERCHANT_KEYS));
+      tdA.appendChild(btn);
+      tr.appendChild(tdA);
+      body.appendChild(tr);
+    });
+  }
+
+  var AI_SCENARIOS = [
+    { text: '동일 사용자의 주중 점심 시간대 대비 금액이 상위 5%이며, 최근 14일 유사 업종 거래 빈도가 증가했습니다. 규칙 R-금지시간대는 미충족입니다.', conf: '중간 (62%)' },
+    { text: '야간 시간대 집중 사용과 고액 승인이 겹쳤습니다. 동일 가맹점군에서 반복 패턴이 감지되어 리스크 점수가 상승했습니다.', conf: '높음 (71%)' },
+    { text: '평소 대비 거래 간격이 짧고 금액 분산이 낮습니다. 팀 단위 규정(1일 1회 한도) 가능성을 검토하세요.', conf: '중간 (55%)' },
+    { text: '가맹점 카테고리가 정책 화이트리스트와 불일치합니다. 수기 영수증 확인을 권장합니다.', conf: '낮음 (48%)' },
+  ];
+  var aiScenarioIdx = 0;
+  var aiVariantIdx = 0;
+  var lastAiSummaryText = '';
+
+  function aiEscapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  function buildDataDrivenAiSummary(rows, headers, variantIdx) {
+    if (!rows || !rows.length) {
+      return {
+        text:
+          '분석할 거래가 없습니다. 대시보드에서 파일을 업로드하거나 「샘플 데이터로 검토」를 실행한 뒤, 「업로드 데이터로 요약 갱신」을 눌러 주세요.',
+        confDisplay: '—',
+      };
+    }
+    var v = (variantIdx || 0) % 3;
+    var kpi = computeKpiFromRows(rows);
+    var risks = rows.map(function (r) {
+      return Number(r.risk_score) || 0;
+    });
+    var maxR = Math.max.apply(null, risks);
+    var minR = Math.min.apply(null, risks);
+    var sum = risks.reduce(function (a, b) {
+      return a + b;
+    }, 0);
+    var avgR = Math.round(sum / risks.length);
+    var topRows = rows
+      .slice()
+      .sort(function (a, b) {
+        return (Number(b.risk_score) || 0) - (Number(a.risk_score) || 0);
+      })
+      .slice(0, 3);
+    var mer = function (r) {
+      return pickCol(r.raw || {}, headers, MERCHANT_KEYS);
+    };
+    var names = [];
+    topRows.forEach(function (r) {
+      var m = mer(r);
+      if (m && m !== '—') names.push(m + '(' + r.risk_score + ')');
+    });
+    var pctViol = rows.length ? Math.round((kpi.violation / rows.length) * 100) : 0;
+    var threshold = Math.max(1, Math.ceil(maxR * 0.85));
+    var parts = [];
+    parts.push(
+      '현재 요약은 대시보드 「업로드 거래」와 같은 범위입니다(필터 적용 시 그에 맞는 부분집합 ' +
+        rows.length +
+        '건).'
+    );
+    parts.push(
+      '상태 분포: 정상 ' +
+        kpi.ok +
+        '건, 위반 의심 ' +
+        kpi.violation +
+        '건, 그 외 검토·의심 ' +
+        kpi.reviewPending +
+        '건.'
+    );
+    parts.push('리스크 점수: 평균 ' + avgR + ', 최고 ' + maxR + ', 최저 ' + minR + '.');
+    if (names.length) {
+      parts.push('리스크 상위(가맹점·점수): ' + names.join(', ') + '.');
+    }
+    if (v === 0) {
+      parts.push(
+        '가이드: 위반 의심 비중은 약 ' +
+          pctViol +
+          '%입니다. 자동검토사유 열에서 반복 키워드를 보고 정책(고액·업종)을 조정할 수 있습니다.'
+      );
+    } else if (v === 1) {
+      parts.push(
+        '점검 권장: 점수 ' +
+          threshold +
+          ' 이상 건은 영수증·용도를 우선 확인하세요. 「위반 검토」에서 조치를 남기면 감사 로그와 연결됩니다.'
+      );
+    } else {
+      parts.push(
+        '참고: 본 패널은 규칙 엔진·통계 요약입니다. LLM 연동 시 이 문단을 모델 응답으로 교체하면 됩니다.'
+      );
+    }
+    var confNum = Math.min(
+      90,
+      Math.max(52, 58 + Math.min(22, kpi.violation * 4 + Math.round(maxR / 10)))
+    );
+    var confDisplay =
+      confNum >= 78
+        ? '높음 (' + confNum + '%)'
+        : confNum >= 64
+          ? '중간 (' + confNum + '%)'
+          : '보통 (' + confNum + '%)';
+    return { text: parts.join(' '), confDisplay: confDisplay };
+  }
+
+  function renderAiMemoHistory() {
+    var wrap = document.getElementById('aiMemoHistoryWrap');
+    var list = document.getElementById('aiMemoHistoryList');
+    if (!list || !wrap) return;
+    var items = [];
+    try {
+      items = JSON.parse(localStorage.getItem(AI_MEMO_HISTORY_KEY) || '[]');
+    } catch (e) {}
+    list.innerHTML = '';
+    if (!items.length) {
+      wrap.hidden = true;
+      return;
+    }
+    wrap.hidden = false;
+    items.slice(0, 8).forEach(function (it) {
+      var li = document.createElement('li');
+      li.style.marginBottom = '8px';
+      var note = it.note || '';
+      li.innerHTML =
+        '<span class="tabular">' +
+        String(it.t || '').replace('T', ' ').slice(0, 19) +
+        '</span> — ' +
+        aiEscapeHtml(note.slice(0, 220)) +
+        (note.length > 220 ? '…' : '');
+      list.appendChild(li);
+    });
+  }
+
+  function refreshAiRiskPanel() {
+    var f = window.__uploadFull;
+    var hasData = f && f.rows && f.rows.length;
+    var txtEl = document.getElementById('aiSummaryText');
+    var confEl = document.getElementById('aiConfidenceText');
+    var tag = document.getElementById('aiModelTag');
+    var ctx = document.getElementById('aiDataContext');
+
+    if (hasData) {
+      var rows = getRowsForUploadTable();
+      var payload = buildDataDrivenAiSummary(rows, f.headers, aiVariantIdx);
+      if (txtEl) txtEl.textContent = payload.text;
+      if (confEl) confEl.textContent = payload.confDisplay;
+      lastAiSummaryText = payload.text;
+      if (tag) tag.textContent = '(규칙·통계 기반 — 업로드 데이터 연동)';
+      if (ctx) {
+        ctx.textContent =
+          '연결: 전체 ' +
+          f.rows.length +
+          '건 · 분석·표시 범위 ' +
+          rows.length +
+          '건(대시보드 필터와 동일)';
+      }
+    } else {
+      var sc = AI_SCENARIOS[aiScenarioIdx % AI_SCENARIOS.length];
+      if (txtEl) txtEl.textContent = sc.text;
+      if (confEl) confEl.textContent = sc.conf;
+      lastAiSummaryText = sc.text;
+      if (tag) tag.textContent = '(예시 시나리오 — 업로드 시 실데이터 요약으로 바뀜)';
+      if (ctx) {
+        ctx.textContent =
+          '연결된 거래 없음 · 아래 문단은 참고용 예시입니다. 데이터 업로드 후 「요약 갱신」을 사용하세요.';
+      }
+    }
+    renderAiMemoHistory();
+  }
+
+  function defaultPolicies() {
+    return [
+      { id: 'p1', name: '고액 100만 이상', keyword: '', amountMin: 1000000 },
+      { id: 'p2', name: '유흥 키워드', keyword: '유흥', amountMin: 0 },
+      { id: 'p3', name: '주말 야간', keyword: 'BAR', amountMin: 300000 },
+    ];
+  }
+
+  function loadPolicies() {
+    try {
+      var raw = localStorage.getItem(POLICY_KEY);
+      if (!raw) return defaultPolicies();
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) && arr.length ? arr : defaultPolicies();
+    } catch (e) {
+      return defaultPolicies();
+    }
+  }
+
+  function savePolicies(list) {
+    localStorage.setItem(POLICY_KEY, JSON.stringify(list));
+  }
+
+  function renderPolicyTable() {
+    var body = document.getElementById('policyTableBody');
+    if (!body) return;
+    body.innerHTML = '';
+    loadPolicies().forEach(function (row) {
+      var tr = document.createElement('tr');
+      ['name', 'keyword', 'amountMin'].forEach(function (k) {
+        var td = document.createElement('td');
+        td.textContent = k === 'amountMin' ? String(row[k]) : row[k] || '—';
+        tr.appendChild(td);
+      });
+      var tdDel = document.createElement('td');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn';
+      btn.textContent = '삭제';
+      btn.addEventListener('click', function () {
+        var next = loadPolicies().filter(function (p) {
+          return p.id !== row.id;
+        });
+        savePolicies(next);
+        renderPolicyTable();
+        auditLog('정책 삭제', row.name);
+      });
+      tdDel.appendChild(btn);
+      tr.appendChild(tdDel);
+      body.appendChild(tr);
+    });
+  }
+
+  function ensureNotifs() {
+    var raw = localStorage.getItem(NOTIF_KEY);
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {}
+    }
+    var initial = [
+      { id: 'n1', title: '검토 대기 5건', body: '어제 업로드 배치에 검토 대기 건이 있습니다.', unread: true },
+      { id: 'n2', title: '정책 변경 안내', body: '고액 임계값이 갱신되었습니다. 정책 관리에서 확인하세요.', unread: true },
+      { id: 'n3', title: '시스템', body: '로컬 프로토타입 모드입니다.', unread: false },
+    ];
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(initial));
+    return initial;
+  }
+
+  function saveNotifs(list) {
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
+  }
+
+  function renderNotifyList() {
+    var host = document.getElementById('notifyList');
+    if (!host) return;
+    host.innerHTML = '';
+    ensureNotifs().forEach(function (n) {
+      var row = document.createElement('div');
+      row.className = 'notify-item' + (n.unread ? ' unread' : '');
+      var txt = document.createElement('div');
+      txt.innerHTML = '<strong>' + n.title + '</strong><p class="muted" style="margin:8px 0 0;font-size:13px">' + n.body + '</p>';
+      var markBtn = document.createElement('button');
+      markBtn.type = 'button';
+      markBtn.className = 'btn';
+      markBtn.textContent = n.unread ? '읽음' : '읽음 처리됨';
+      markBtn.disabled = !n.unread;
+      if (n.unread) {
+        (function (id) {
+          markBtn.addEventListener('click', function () {
+            var list = ensureNotifs().map(function (x) {
+              if (x.id === id) return Object.assign({}, x, { unread: false });
+              return x;
+            });
+            saveNotifs(list);
+            auditLog('알림 읽음', id);
+            renderNotifyList();
+          });
+        })(n.id);
+      }
+      row.appendChild(txt);
+      row.appendChild(markBtn);
+      host.appendChild(row);
+    });
+  }
+
+  document.getElementById('btnPolicyAdd').addEventListener('click', function () {
+    var nameEl = document.getElementById('policyName');
+    var kwEl = document.getElementById('policyKeyword');
+    var amtEl = document.getElementById('policyAmount');
+    var name = (nameEl && nameEl.value) || '';
+    if (!name.trim()) {
+      auditLog('정책', '이름이 비었습니다');
+      return;
+    }
+    var list = loadPolicies();
+    list.push({
+      id: 'p' + Date.now(),
+      name: name.trim(),
+      keyword: (kwEl && kwEl.value) || '',
+      amountMin: amtEl && amtEl.value !== '' ? Number(amtEl.value) : 0,
+    });
+    savePolicies(list);
+    if (nameEl) nameEl.value = '';
+    if (kwEl) kwEl.value = '';
+    if (amtEl) amtEl.value = '';
+    renderPolicyTable();
+    auditLog('정책 추가', name.trim());
+  });
+
+  document.getElementById('btnAiRefreshData').addEventListener('click', function () {
+    aiVariantIdx = 0;
+    refreshAiRiskPanel();
+    auditLog('AI 리스크', '업로드 데이터로 요약 갱신');
+  });
+
+  document.getElementById('btnAiRegenerate').addEventListener('click', function () {
+    if (window.__uploadFull && window.__uploadFull.rows.length) {
+      aiVariantIdx = (aiVariantIdx + 1) % 3;
+      refreshAiRiskPanel();
+      auditLog('AI 리스크', '데이터 요약 각도 ' + (aiVariantIdx + 1) + '/3');
+    } else {
+      aiScenarioIdx = (aiScenarioIdx + 1) % AI_SCENARIOS.length;
+      refreshAiRiskPanel();
+      auditLog('AI 리스크', '예시 시나리오 ' + (aiScenarioIdx + 1) + '/' + AI_SCENARIOS.length);
+    }
+  });
+
+  document.getElementById('btnAiSaveNote').addEventListener('click', function () {
+    var note = (document.getElementById('aiReviewerNote') || {}).value || '';
+    var trimmed = note.trim();
+    if (!trimmed) {
+      auditLog('AI 검토자 메모', '(빈 메모)');
+      return;
+    }
+    auditLog('AI 검토자 메모', trimmed.slice(0, 500));
+    try {
+      var hist = JSON.parse(localStorage.getItem(AI_MEMO_HISTORY_KEY) || '[]');
+      hist.unshift({
+        t: new Date().toISOString(),
+        note: trimmed,
+        summary: lastAiSummaryText.slice(0, 1500),
+      });
+      localStorage.setItem(AI_MEMO_HISTORY_KEY, JSON.stringify(hist.slice(0, 50)));
+    } catch (e) {}
+    renderAiMemoHistory();
+  });
+
+  var aiDraftTimer = null;
+  var taAiMemo = document.getElementById('aiReviewerNote');
+  if (taAiMemo) {
+    taAiMemo.addEventListener('input', function () {
+      if (aiDraftTimer) clearTimeout(aiDraftTimer);
+      aiDraftTimer = setTimeout(function () {
+        try {
+          localStorage.setItem(AI_MEMO_DRAFT_KEY, (taAiMemo.value || '').slice(0, 8000));
+        } catch (e) {}
+      }, 400);
+    });
+  }
+
+  document.getElementById('btnViolationRefresh').addEventListener('click', function () {
+    refreshViolationTable();
+    auditLog('위반 검토', '테이블 새로고침');
+  });
+
+  document.getElementById('btnMonitorFromUpload').addEventListener('click', syncMonitorFromUpload);
+  document.getElementById('btnMonitorReset').addEventListener('click', function () {
+    monitorRows = MONITOR_SAMPLE.slice();
+    renderMonitorTable();
+    auditLog('거래 모니터링', '샘플로 초기화');
+  });
+
+  var mf = document.getElementById('monitorFilter');
+  if (mf) {
+    mf.addEventListener('input', function () {
+      renderMonitorTable();
+    });
+  }
+
+  document.getElementById('btnNotifyMarkAll').addEventListener('click', function () {
+    saveNotifs(ensureNotifs().map(function (n) {
+      return Object.assign({}, n, { unread: false });
+    }));
+    renderNotifyList();
+    auditLog('알림', '모두 읽음');
+  });
+
+  document.getElementById('btnAuditClear').addEventListener('click', function () {
+    localStorage.removeItem(AUDIT_KEY);
+    renderAuditTable();
+  });
+
+  document.querySelectorAll('.nav-item').forEach(function (el) {
+    el.addEventListener('click', function () {
+      showPage(el.getAttribute('data-page'));
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        showPage(el.getAttribute('data-page'));
+      }
+    });
+  });
+
+  document.querySelectorAll('input[name="uploadViewMode"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      refreshUploadTableView();
+    });
+  });
+
+  var btnFiltApply = document.getElementById('btnUploadFilterApply');
+  if (btnFiltApply) btnFiltApply.addEventListener('click', refreshUploadTableView);
+  var btnFiltReset = document.getElementById('btnUploadFilterReset');
+  if (btnFiltReset)
+    btnFiltReset.addEventListener('click', function () {
+      var s = document.getElementById('uploadFilterSearch');
+      var st = document.getElementById('uploadFilterStatus');
+      var r1 = document.getElementById('uploadFilterRiskMin');
+      var r2 = document.getElementById('uploadFilterRiskMax');
+      if (s) s.value = '';
+      if (st) st.value = '';
+      if (r1) r1.value = '';
+      if (r2) r2.value = '';
+      refreshUploadTableView();
+    });
+  var btnCsv = document.getElementById('btnDownloadCsv');
+  if (btnCsv) btnCsv.addEventListener('click', downloadUploadAsCsv);
+  var btnXlsx = document.getElementById('btnDownloadXlsx');
+  if (btnXlsx) btnXlsx.addEventListener('click', downloadUploadAsXlsx);
+  var uploadSearch = document.getElementById('uploadFilterSearch');
+  if (uploadSearch) {
+    uploadSearch.addEventListener('input', function () {
+      if (_uploadSearchDebounce) clearTimeout(_uploadSearchDebounce);
+      _uploadSearchDebounce = setTimeout(function () {
+        refreshUploadTableView();
+      }, 320);
+    });
+  }
+  var uploadSt = document.getElementById('uploadFilterStatus');
+  if (uploadSt) uploadSt.addEventListener('change', refreshUploadTableView);
+  var uploadRmin = document.getElementById('uploadFilterRiskMin');
+  var uploadRmax = document.getElementById('uploadFilterRiskMax');
+  if (uploadRmin) uploadRmin.addEventListener('change', refreshUploadTableView);
+  if (uploadRmax) uploadRmax.addEventListener('change', refreshUploadTableView);
+
+  var hash = (location.hash || '#dashboard').replace(/^#/, '');
+  if (!PAGE_LABELS[hash]) hash = 'dashboard';
+  showPage(hash, { silent: true });
+  renderMonitorTable();
+  renderAuditTable();
+
+  try {
+    var qs = new URLSearchParams(window.location.search || '');
+    if (qs.get('sample') === '1' || qs.get('upload') === '1' || qs.get('demo') === '1') {
+      setTimeout(function () {
+        runSampleReview();
+      }, 150);
+    }
+  } catch (e) {}
+
+  if (typeof XLSX === 'undefined') {
+    document.getElementById('uploadError').textContent =
+      '엑셀 라이브러리 로드 실패. 인터넷 연결 후 새로고침 하세요.';
+    document.getElementById('uploadError').hidden = false;
+  }
+})();
+  </script>
+</body>
+</html>

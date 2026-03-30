@@ -1,0 +1,389 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  ACCOUNTING
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  VIOLATION
+  DISMISSED
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  name               String?
+  passwordHash       String
+  role               Role                @default(ACCOUNTING)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  reviews            Review[]
+  auditLogs          AuditLog[]
+  triggeredAiRuns    AiAnalysisRun[]     @relation("RunTriggeredBy")
+  reviewerFeedbacks  ReviewerFeedback[]
+}
+
+model Transaction {
+  id                 String              @id @default(cuid())
+  amount             Decimal
+  currency           String              @default("KRW")
+  merchantName       String?
+  category           String?
+  userLabel          String?
+  txnDate            DateTime
+  description        String?
+  rawMetadata        Json?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  featureSnapshots   FeatureSnapshot[]
+  aiAnalysisResults  AiAnalysisResult[]
+  reviewerFeedbacks  ReviewerFeedback[]
+  review             Review?
+}
+
+/// 학습/배포된 모델(또는 목 스코어러) 버전
+model ModelVersion {
+  id               String             @id @default(cuid())
+  modelName        String
+  version          String
+  artifactUri      String?
+  trainingDataFrom DateTime?
+  trainingDataTo   DateTime?
+  metricsJson      Json?
+  isDeployed       Boolean            @default(false)
+  notes            String?
+  createdAt        DateTime           @default(now())
+  analysisResults  AiAnalysisResult[]
+
+  @@unique([modelName, version])
+}
+
+/// LLM 설명용 프롬프트 버전
+model PromptVersion {
+  id             String             @id @default(cuid())
+  name           String
+  contentSha256  String
+  templateUri    String?
+  llmModel       String             @default("gpt-4o-mini")
+  parametersJson Json?
+  createdAt      DateTime           @default(now())
+  analysisResults AiAnalysisResult[]
+
+  @@unique([name, contentSha256])
+}
+
+/// 배치·온디맨드 추론 실행 단위
+model AiAnalysisRun {
+  id                String             @id @default(cuid())
+  runType           String
+  status            String             @default("pending")
+  scopeDescription  String?
+  transactionFrom   DateTime?
+  transactionTo     DateTime?
+  startedAt         DateTime           @default(now())
+  completedAt       DateTime?
+  triggeredByUserId String?
+  triggeredBy       User?              @relation("RunTriggeredBy", fields: [triggeredByUserId], references: [id])
+  errorMessage      String?
+  statsJson         Json?
+  results           AiAnalysisResult[]
+}
+
+/// 거래 단위 피처 스냅샷(재현·감사)
+model FeatureSnapshot {
+  id                   String             @id @default(cuid())
+  transactionId        String
+  transaction          Transaction        @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  featureSchemaVersion String
+  featuresJson         Json
+  inputHash            String?
+  computedAt           DateTime           @default(now())
+  analysisResults      AiAnalysisResult[]
+
+  @@index([transactionId, featureSchemaVersion])
+}
+
+/// 거래별 추론 결과(재추론 시 resultSeq 증가, isCurrent로 최신 표시)
+model AiAnalysisResult {
+  id                    String             @id @default(cuid())
+  transactionId         String
+  transaction           Transaction        @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  analysisRunId         String?
+  analysisRun           AiAnalysisRun?     @relation(fields: [analysisRunId], references: [id])
+  resultSeq             Int
+  modelVersionId        String
+  modelVersion          ModelVersion       @relation(fields: [modelVersionId], references: [id])
+  promptVersionId       String?
+  promptVersion         PromptVersion?     @relation(fields: [promptVersionId], references: [id])
+  featureSnapshotId     String
+  featureSnapshot       FeatureSnapshot    @relation(fields: [featureSnapshotId], references: [id])
+  ruleHitsJson          Json?
+  anomalyScore          Decimal?
+  riskScore             Int
+  explanationStructured Json?
+  explanationText       String
+  explanationLocale     String             @default("ko")
+  rawModelOutputs       Json?
+  isCurrent             Boolean            @default(true)
+  createdAt             DateTime           @default(now())
+  predictionLabels      PredictionLabel[]
+  reviewerFeedbacks     ReviewerFeedback[]
+  reviews               Review[]
+
+  @@unique([transactionId, resultSeq])
+  @@index([transactionId, isCurrent])
+}
+
+model PredictionLabel {
+  id                 String           @id @default(cuid())
+  aiAnalysisResultId String
+  aiAnalysisResult   AiAnalysisResult @relation(fields: [aiAnalysisResultId], references: [id], onDelete: Cascade)
+  labelType          String
+  labelValue         String
+  probability        Decimal?
+  calibratedBucket   String?
+  createdAt          DateTime         @default(now())
+
+  @@index([aiAnalysisResultId])
+}
+
+/// HITL 최종 결과·오버라이드(학습 신호)
+model ReviewerFeedback {
+  id                    String            @id @default(cuid())
+  transactionId         String
+  transaction           Transaction       @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  reviewId              String?
+  review                Review?           @relation(fields: [reviewId], references: [id])
+  aiAnalysisResultId    String?
+  aiAnalysisResult      AiAnalysisResult? @relation(fields: [aiAnalysisResultId], references: [id])
+  reviewerUserId        String
+  reviewer              User              @relation(fields: [reviewerUserId], references: [id])
+  finalOutcome          String
+  finalViolationCategory String?
+  overrideReason        String?
+  aiSuggestedCategory   String?
+  aiRiskScoreAtReview   Int?
+  agreementWithAi       Boolean?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([transactionId, createdAt])
+  @@index([reviewerUserId, createdAt])
+}
+
+model Review {
+  id                 String             @id @default(cuid())
+  transactionId      String             @unique
+  transaction        Transaction        @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  status             ReviewStatus       @default(PENDING)
+  reviewerId         String?
+  reviewer           User?              @relation(fields: [reviewerId], references: [id])
+  comment            String?
+  decidedAt          DateTime?
+  aiAnalysisResultId String?
+  aiAnalysisResult   AiAnalysisResult?  @relation(fields: [aiAnalysisResultId], references: [id])
+  overrideReason     String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  reviewerFeedbacks  ReviewerFeedback[]
+}
+
+enum PolicyRuleType {
+  TIME_BASED
+  AMOUNT_BASED
+  MERCHANT_CATEGORY_BASED
+  DOCUMENT_BASED
+  PATTERN_BASED
+  ORGANIZATION_BASED
+}
+
+enum PolicyRuleStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum PolicySeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum PolicyActionType {
+  FLAG_ONLY
+  REQUIRE_REVIEW
+  AUTO_HOLD
+  AUTO_ESCALATE
+}
+
+enum PolicyApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ConditionLogicalOp {
+  AND
+  OR
+}
+
+enum ConditionOperator {
+  EQ
+  NE
+  GT
+  GTE
+  LT
+  LTE
+  IN
+  NOT_IN
+  EXISTS
+  REGEX
+}
+
+enum ConditionValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  DATETIME
+  ARRAY
+  JSON
+}
+
+enum ScopeUnitType {
+  COMPANY
+  DEPARTMENT
+  COST_CENTER
+  CARD_GROUP
+  USER_ROLE
+}
+
+enum ExceptionTargetType {
+  USER
+  CARD
+  MERCHANT
+  PROJECT
+  TRANSACTION
+}
+
+model PolicyRule {
+  id               String               @id @default(cuid())
+  ruleCode         String               @unique
+  name             String
+  description      String?
+  ruleType         PolicyRuleType
+  severity         PolicySeverity
+  status           PolicyRuleStatus     @default(DRAFT)
+  priority         Int                  @default(100)
+  tagsJson         Json?
+  currentVersionId String?
+  currentVersion   PolicyRuleVersion?   @relation("CurrentPolicyRuleVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  versions         PolicyRuleVersion[]  @relation("PolicyRuleVersions")
+  createdByUserId  String?
+  updatedByUserId  String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  deletedAt        DateTime?
+
+  @@index([status, ruleType, severity])
+  @@index([updatedAt])
+}
+
+model PolicyRuleVersion {
+  id                 String                @id @default(cuid())
+  policyRuleId       String
+  policyRule         PolicyRule            @relation("PolicyRuleVersions", fields: [policyRuleId], references: [id], onDelete: Cascade)
+  versionNo          Int
+  approvalStatus     PolicyApprovalStatus  @default(PENDING)
+  isActive           Boolean               @default(false)
+  severity           PolicySeverity
+  actionsJson        Json
+  configSnapshotJson Json?
+  changeSummary      String?
+  changeReason       String?
+  createdByUserId    String
+  approvedByUserId   String?
+  createdAt          DateTime              @default(now())
+  approvedAt         DateTime?
+  activatedAt        DateTime?
+  deactivatedAt      DateTime?
+  conditions         PolicyRuleCondition[]
+  scopes             PolicyRuleScope[]
+  exceptions         PolicyRuleException[]
+  currentOfRules     PolicyRule[]          @relation("CurrentPolicyRuleVersion")
+
+  @@unique([policyRuleId, versionNo])
+  @@index([policyRuleId, isActive])
+  @@index([approvalStatus, createdAt])
+}
+
+model PolicyRuleCondition {
+  id                  String              @id @default(cuid())
+  policyRuleVersionId String
+  policyRuleVersion   PolicyRuleVersion   @relation(fields: [policyRuleVersionId], references: [id], onDelete: Cascade)
+  conditionGroup      Int                 @default(1)
+  logicalOp           ConditionLogicalOp  @default(AND)
+  field               String
+  operator            ConditionOperator
+  valueType           ConditionValueType
+  valueJson           Json
+  orderNo             Int                 @default(1)
+  createdAt           DateTime            @default(now())
+
+  @@index([policyRuleVersionId, conditionGroup, orderNo])
+}
+
+model PolicyRuleScope {
+  id                  String             @id @default(cuid())
+  policyRuleVersionId String
+  policyRuleVersion   PolicyRuleVersion  @relation(fields: [policyRuleVersionId], references: [id], onDelete: Cascade)
+  scopeUnitType       ScopeUnitType
+  scopeUnitId         String
+  country             String?
+  currency            String?
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+  createdAt           DateTime           @default(now())
+
+  @@index([policyRuleVersionId])
+  @@index([scopeUnitType, scopeUnitId])
+}
+
+model PolicyRuleException {
+  id                  String               @id @default(cuid())
+  policyRuleVersionId String
+  policyRuleVersion   PolicyRuleVersion    @relation(fields: [policyRuleVersionId], references: [id], onDelete: Cascade)
+  targetType          ExceptionTargetType
+  targetId            String
+  reason              String
+  validFrom           DateTime?
+  validTo             DateTime?
+  approvedByUserId    String?
+  approvedAt          DateTime?
+  createdAt           DateTime             @default(now())
+
+  @@index([policyRuleVersionId])
+  @@index([targetType, targetId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  payload    Json?
+  createdAt  DateTime @default(now())
+}
