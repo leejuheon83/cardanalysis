@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { mapCurrentAiAnalysis } from "@/lib/ai-layer/map-current-ai";
 import { buildTransactionWhere, currentAnalysisInclude } from "@/lib/transactions/query";
 import { matchesStatusTierFilter, type StatusTierFilter } from "@/lib/transaction-row-status";
+import { hasConfiguredDatabase, setupRequiredMessage } from "@/lib/runtime-config";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -31,6 +32,13 @@ export async function GET(req: Request) {
   const parsed = querySchema.safeParse(Object.fromEntries(url.searchParams));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid query" }, { status: 400 });
+  }
+  if (!hasConfiguredDatabase()) {
+    return NextResponse.json({
+      items: [],
+      setupRequired: true,
+      message: setupRequiredMessage(),
+    });
   }
   const q = parsed.data;
   const tier: StatusTierFilter = q.statusTier ?? "all";
@@ -69,5 +77,5 @@ export async function GET(req: Request) {
   }
   items = items.slice(0, LIST_LIMIT);
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ items, setupRequired: false, message: null });
 }

@@ -2,11 +2,23 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { hasConfiguredDatabase, setupRequiredMessage } from "@/lib/runtime-config";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!hasConfiguredDatabase()) {
+    return NextResponse.json({
+      totalTransactions: 0,
+      flaggedTransactions: 0,
+      violationCount: 0,
+      pendingReviews: 0,
+      setupRequired: true,
+      message: setupRequiredMessage(),
+    });
   }
 
   const [totalTransactions, flaggedTransactions, violationCount, pendingReviews] =
@@ -33,5 +45,7 @@ export async function GET() {
     flaggedTransactions,
     violationCount,
     pendingReviews,
+    setupRequired: false,
+    message: null,
   });
 }

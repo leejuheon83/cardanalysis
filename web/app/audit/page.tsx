@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/shell";
+import { SetupNotice } from "@/components/setup-notice";
+import type { SetupAwareResponse } from "@/types";
 
 type Log = {
   id: string;
@@ -14,7 +16,7 @@ type Log = {
   actorName: string | null;
 };
 
-async function fetchAudit(): Promise<{ items: Log[] }> {
+async function fetchAudit(): Promise<{ items: Log[] } & SetupAwareResponse> {
   const res = await fetch("/api/audit", { credentials: "include" });
   if (!res.ok) throw new Error("감사 로그 로드 실패");
   return res.json();
@@ -30,6 +32,7 @@ export default function AuditPage() {
     <AppShell>
       <h1 className="text-2xl font-semibold text-slate-900">감사 로그</h1>
       <p className="mt-1 text-sm text-slate-500">최근 100건</p>
+      {data?.setupRequired && data.message && <SetupNotice message={data.message} />}
 
       {isLoading && <p className="mt-6">불러오는 중…</p>}
       {error && <p className="mt-6 text-red-600">{(error as Error).message}</p>}

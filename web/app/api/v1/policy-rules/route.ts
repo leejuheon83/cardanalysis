@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
 import { createRuleSchema } from "@/lib/policy-rules/contracts";
+import { hasConfiguredDatabase, setupRequiredMessage } from "@/lib/runtime-config";
 import {
   badRequest,
   canManagePolicy,
@@ -27,6 +28,13 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   const auth = requireSessionUser(session);
   if (!auth.ok) return auth.response;
+  if (!hasConfiguredDatabase()) {
+    return NextResponse.json({
+      items: [],
+      setupRequired: true,
+      message: setupRequiredMessage(),
+    });
+  }
 
   const parsedQuery = querySchema.safeParse(Object.fromEntries(new URL(req.url).searchParams));
   if (!parsedQuery.success) return badRequest("Invalid query");
@@ -66,6 +74,8 @@ export async function GET(req: Request) {
       updatedAt: rule.updatedAt.toISOString(),
       currentVersion: rule.currentVersion ? toVersionResponse(rule.currentVersion) : null,
     })),
+    setupRequired: false,
+    message: null,
   });
 }
 

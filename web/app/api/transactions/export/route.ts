@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { mapCurrentAiAnalysis } from "@/lib/ai-layer/map-current-ai";
 import { buildTransactionWhere, currentAnalysisInclude } from "@/lib/transactions/query";
+import { hasConfiguredDatabase, setupRequiredMessage } from "@/lib/runtime-config";
 import {
   getTransactionRowUiStatus,
   matchesStatusTierFilter,
@@ -31,6 +32,9 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!hasConfiguredDatabase()) {
+    return NextResponse.json({ error: setupRequiredMessage() }, { status: 503 });
   }
 
   const url = new URL(req.url);

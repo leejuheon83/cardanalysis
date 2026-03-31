@@ -2,6 +2,12 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import {
+  authFailureDelay,
+  getFallbackAdminCredentials,
+  hasConfiguredDatabase,
+  safeEqualText,
+} from "@/lib/runtime-config";
 
 if (
   process.env.NODE_ENV === "production" &&
@@ -29,21 +35,59 @@ export const authOptions: NextAuthOptions = {
         const password = credentials?.password;
         if (!email || !password) return null;
 
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) return null;
-
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) {
-          await new Promise((r) => setTimeout(r, 100 + Math.random() * 120));
+        const fallback = getFallbackAdminCredentials();
+        if (!hasConfiguredDatabase()) {
+          if (
+            fallback &&
+            safeEqualText(email, fallback.email) &&
+            safeEqualText(password, fallback.password)
+          ) {
+            return {
+              id: "fallback-admin",
+              email: fallback.email,
+              name: "Fallback Admin",
+              role: "ADMIN",
+            };
+          }
+          await authFailureDelay();
           return null;
         }
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
+        try {
+          const user = await prisma.user.findUnique({ where: { email } });
+          if (!user) {
+            await authFailureDelay();
+            return null;
+          }
+
+          const valid = await bcrypt.compare(password, user.passwordHash);
+          if (!valid) {
+            await authFailureDelay();
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          };
+        } catch {
+          if (
+            fallback &&
+            safeEqualText(email, fallback.email) &&
+            safeEqualText(password, fallback.password)
+          ) {
+            return {
+              id: "fallback-admin",
+              email: fallback.email,
+              name: "Fallback Admin",
+              role: "ADMIN",
+            };
+          }
+          await authFailureDelay();
+          return null;
+        }
       },
     }),
   ],

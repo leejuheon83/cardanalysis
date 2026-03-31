@@ -9,6 +9,11 @@ export type SessionUser = {
   role: Role;
 };
 
+export type SetupAwareResponse = {
+  setupRequired: boolean;
+  message: string | null;
+};
+
 export type TransactionListItem = {
   id: string;
   amount: string;

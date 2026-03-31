@@ -4,15 +4,18 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/shell";
+import { SetupNotice } from "@/components/setup-notice";
 import { TransactionStatusBadge } from "@/components/status-badge";
 import {
   getTransactionRowUiStatus,
   rowStatusClass,
 } from "@/lib/transaction-row-status";
-import type { TransactionListItem } from "@/types";
+import type { SetupAwareResponse, TransactionListItem } from "@/types";
 import type { StatusTierFilter } from "@/lib/transaction-row-status";
 
-async function fetchTransactions(qs: string): Promise<{ items: TransactionListItem[] }> {
+async function fetchTransactions(
+  qs: string,
+): Promise<{ items: TransactionListItem[] } & SetupAwareResponse> {
   const res = await fetch(`/api/transactions?${qs}`, { credentials: "include" });
   if (!res.ok) throw new Error("목록 로드 실패");
   return res.json();
@@ -57,6 +60,10 @@ export default function TransactionsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadMsg(null);
+    if (data?.setupRequired) {
+      setUploadMsg(data.message ?? "운영 데이터베이스 연결이 필요합니다.");
+      return;
+    }
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch("/api/transactions/upload", {
@@ -81,6 +88,10 @@ export default function TransactionsPage() {
 
   async function onExportExcel() {
     setExportErr(null);
+    if (data?.setupRequired) {
+      setExportErr(data.message ?? "운영 데이터베이스 연결이 필요합니다.");
+      return;
+    }
     try {
       const res = await fetch(`/api/transactions/export?${queryString}`, { credentials: "include" });
       if (!res.ok) {
@@ -112,6 +123,7 @@ export default function TransactionsPage() {
   return (
     <AppShell>
       <h1 className="text-2xl font-semibold text-slate-900">거래 목록</h1>
+      {data?.setupRequired && data.message && <SetupNotice message={data.message} />}
 
       <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
         <p className="text-sm font-medium text-slate-700">엑셀 업로드</p>

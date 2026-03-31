@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/shell";
-import type { PolicyRuleListItem, PolicySeverity, PolicyStatus, PolicyRuleType } from "@/types/policy-rules";
+import { SetupNotice } from "@/components/setup-notice";
+import type { PolicyRuleListResponse, PolicySeverity, PolicyStatus, PolicyRuleType } from "@/types/policy-rules";
 import { ruleTypeLabel, severityLabel, statusLabel } from "@/lib/policy-rules/labels";
 
-async function fetchPolicyRules(query: string): Promise<{ items: PolicyRuleListItem[] }> {
+async function fetchPolicyRules(query: string): Promise<PolicyRuleListResponse> {
   const res = await fetch(`/api/v1/policy-rules?${query}`, { credentials: "include" });
   if (!res.ok) throw new Error("정책 규칙 목록을 불러오지 못했습니다.");
   return res.json();
@@ -49,11 +50,13 @@ export default function PolicyRuleListPage() {
         </div>
         <Link
           href="/policy-rules/new"
+          aria-disabled={data?.setupRequired ? "true" : "false"}
           className="rounded bg-primary px-3 py-2 text-sm font-medium text-white hover:brightness-95"
         >
           새 규칙
         </Link>
       </div>
+      {data?.setupRequired && data.message && <SetupNotice message={data.message} />}
 
       <div className="mt-6 grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="검색" value={q} onChange={setQ} placeholder="규칙명/코드" />

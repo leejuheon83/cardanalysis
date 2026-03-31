@@ -2,9 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/shell";
+import { SetupNotice } from "@/components/setup-notice";
 import Link from "next/link";
+import type { SetupAwareResponse } from "@/types";
 
-type Dashboard = {
+type Dashboard = SetupAwareResponse & {
   totalTransactions: number;
   flaggedTransactions: number;
   violationCount: number;
@@ -27,6 +29,7 @@ export default function HomePage() {
     <AppShell>
       <h1 className="text-2xl font-semibold text-slate-900">대시보드</h1>
       <p className="mt-1 text-sm text-slate-500">MVP 지표</p>
+      {data?.setupRequired && data.message && <SetupNotice message={data.message} />}
 
       {isLoading && <p className="mt-6 text-slate-600">불러오는 중…</p>}
       {error && <p className="mt-6 text-red-600">{(error as Error).message}</p>}

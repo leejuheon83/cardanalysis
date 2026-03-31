@@ -90,6 +90,12 @@ export type PolicyRuleListItem = {
   currentVersion: PolicyRuleVersionDto | null;
 };
 
+export type PolicyRuleListResponse = {
+  items: PolicyRuleListItem[];
+  setupRequired: boolean;
+  message: string | null;
+};
+
 export type PolicyRuleDetail = {
   id: string;
   ruleCode: string;

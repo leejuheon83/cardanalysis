@@ -2,8 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/shell";
+import { SetupNotice } from "@/components/setup-notice";
+import type { SetupAwareResponse } from "@/types";
 
-type Summary = {
+type Summary = SetupAwareResponse & {
   counts: {
     modelVersions: number;
     analysisResults: number;
@@ -37,6 +39,7 @@ export default function AiLayerPage() {
       <p className="mt-1 text-sm text-slate-500">
         ModelVersion · FeatureSnapshot · AiAnalysisResult · PredictionLabel · ReviewerFeedback 통합 스키마
       </p>
+      {data?.setupRequired && data.message && <SetupNotice message={data.message} />}
 
       {isLoading && <p className="mt-6 text-slate-600">불러오는 중…</p>}
       {error && <p className="mt-6 text-red-600">{(error as Error).message}</p>}

@@ -4,11 +4,15 @@ import { authOptions } from "@/lib/auth-options";
 import { parseExcelBuffer } from "@/lib/excel-parse";
 import { rowToTransactionInput } from "@/lib/csv-parse";
 import { createTransactionWithAi } from "@/server/create-transaction-with-ai";
+import { hasConfiguredDatabase, setupRequiredMessage } from "@/lib/runtime-config";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!hasConfiguredDatabase()) {
+    return NextResponse.json({ error: setupRequiredMessage() }, { status: 503 });
   }
 
   const form = await req.formData();
