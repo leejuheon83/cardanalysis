@@ -100,10 +100,16 @@
   </div>
   <script>
 (function () {
+  var STATIC_AUTH_KEY = 'cardMonitorStaticAuth';
   var isFile = window.location.protocol === 'file:';
-  var API_ORIGIN = isFile
-    ? 'http://localhost:3001'
-    : window.location.origin.replace(/\/$/, '');
+  var isLocalServer =
+    window.location.protocol.indexOf('http') === 0 &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1');
+  var useServerAuth = isFile || isLocalServer;
+  var API_ORIGIN = useServerAuth
+    ? (isFile ? 'http://localhost:3001' : window.location.origin.replace(/\/$/, ''))
+    : null;
   var params = new URLSearchParams(window.location.search || '');
   var returnPath = params.get('return') || '/design-preview.html';
   function safeReturn(url) {
@@ -111,7 +117,20 @@
     return url;
   }
   returnPath = safeReturn(returnPath);
-  var afterLoginHref = isFile ? API_ORIGIN + returnPath : returnPath;
+  var afterLoginHref = useServerAuth && isFile ? API_ORIGIN + returnPath : returnPath;
+
+  function setStaticAuthed() {
+    try {
+      localStorage.setItem(STATIC_AUTH_KEY, '1');
+    } catch (e) {}
+  }
+  function isStaticAuthed() {
+    try {
+      return localStorage.getItem(STATIC_AUTH_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
 
   document.getElementById('loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -121,6 +140,17 @@
     btn.disabled = true;
     var username = document.getElementById('username').value.trim();
     var password = document.getElementById('password').value;
+    if (!useServerAuth) {
+      if (username === 'admin' && password === 'admin') {
+        setStaticAuthed();
+        window.location.href = afterLoginHref;
+        return;
+      }
+      err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+      err.classList.add('show');
+      btn.disabled = false;
+      return;
+    }
     fetch(API_ORIGIN + '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -145,6 +175,10 @@
       });
   });
 
+  if (!useServerAuth) {
+    if (isStaticAuthed()) window.location.replace(afterLoginHref);
+    return;
+  }
   fetch(API_ORIGIN + '/api/auth/me', { credentials: 'include' }).then(function (res) {
     if (res.ok) window.location.replace(afterLoginHref);
   });

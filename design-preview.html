@@ -718,19 +718,41 @@
   </div>
   <script>
 (function () {
-  var API_BASE =
-    window.location.protocol === 'file:'
-      ? null
-      : window.location.origin.replace(/\/$/, '');
+  var STATIC_AUTH_KEY = 'cardMonitorStaticAuth';
+  var isLocalServer =
+    window.location.protocol.indexOf('http') === 0 &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1');
+  var API_BASE = isLocalServer
+    ? window.location.origin.replace(/\/$/, '')
+    : null;
+  var usingStaticAuth = !API_BASE;
 
   var apiLabel = document.getElementById('apiBaseLabel');
   var useServerEl = document.getElementById('useServer');
   if (apiLabel) {
-    apiLabel.textContent = API_BASE || '(file:// — 서버 API 사용 불가)';
+    apiLabel.textContent = API_BASE || '정적 배포 모드 — 브라우저 내 로컬 검토';
   }
-  if (useServerEl && !API_BASE) {
+  if (useServerEl && usingStaticAuth) {
     useServerEl.checked = false;
     useServerEl.disabled = true;
+  }
+
+  function isStaticAuthed() {
+    try {
+      return localStorage.getItem(STATIC_AUTH_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+  if (usingStaticAuth && !isStaticAuthed()) {
+    window.location.replace(
+      '/login.html?return=' +
+        encodeURIComponent(
+          window.location.pathname + window.location.search + window.location.hash
+        )
+    );
+    return;
   }
 
   function loginReturnUrl() {
@@ -745,8 +767,13 @@
 
   var btnLogout = document.getElementById('btnLogout');
   if (btnLogout) {
-    if (!API_BASE) {
-      btnLogout.style.display = 'none';
+    if (usingStaticAuth) {
+      btnLogout.addEventListener('click', function () {
+        try {
+          localStorage.removeItem(STATIC_AUTH_KEY);
+        } catch (e) {}
+        redirectToLogin();
+      });
     } else {
       btnLogout.addEventListener('click', function () {
         fetch(API_BASE + '/api/auth/logout', {
