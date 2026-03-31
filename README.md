@@ -6,7 +6,7 @@
 - `server/` — **Node.js API** (Express) + **SQLite** 저장, 서버 측 파싱·검토·감사 로그
 - **`web/`** — **Next.js MVP** (PostgreSQL + Prisma + NextAuth + TanStack Query + AI 목/OpenAI) — 상세는 `web/README.md`
 
-**Vercel 배포:** 저장소 연결 시 **Root Directory를 `web`으로 지정**하고, `web/README.md`의 «Vercel 배포» 절차를 따르세요.
+**Vercel 배포:** GitHub 저장소 `cardanalysis`와 Vercel 프로젝트 **`web`** 이 연결되어 있으면 `main`에 푸시할 때마다 배포됩니다. 모노레포 루트의 `vercel.json`이 **Install/Build를 `web` 하위에서 실행**하도록 설정되어 있습니다. 환경 변수는 Vercel 대시보드(해당 프로젝트 → Settings → Environment Variables)와 `web/README.md`의 «Vercel 배포»를 참고하세요.
 
 ## 서버 실행
 
