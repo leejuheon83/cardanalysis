@@ -6,6 +6,8 @@
 - `server/` — **Node.js API** (Express) + **SQLite** 저장, 서버 측 파싱·검토·감사 로그
 - **`web/`** — **Next.js MVP** (PostgreSQL + Prisma + NextAuth + TanStack Query + AI 목/OpenAI) — 상세는 `web/README.md`
 
+**Vercel 배포:** 저장소 연결 시 **Root Directory를 `web`으로 지정**하고, `web/README.md`의 «Vercel 배포» 절차를 따르세요.
+
 ## 서버 실행
 
 ```bash

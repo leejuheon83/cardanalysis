@@ -30,9 +30,10 @@ web/
 
 ## 설정
 
-1. PostgreSQL 준비 후 `.env` 생성 (`.env.example` 참고).
+1. PostgreSQL 준비 (로컬은 Docker 권장) 후 `.env` 생성 (`.env.example` 참고).
 
 ```bash
+docker compose -f docker-compose.yml up -d
 cp .env.example .env
 # DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL 수정
 ```
@@ -54,6 +55,19 @@ npm run dev
 
 - 로그인: `accounting@example.com` / `accounting123` 또는 `admin@example.com` / `admin123`
 - CSV: `public/sample-transactions.csv` 업로드 테스트
+
+## Vercel 배포
+
+1. [Vercel](https://vercel.com)에서 GitHub 저장소 **Import** → **Root Directory**를 `web`으로 지정.
+2. **Environment Variables** (프로젝트 → Settings → Environment Variables):
+   - `DATABASE_URL` — Neon / Supabase / Vercel Postgres 등 **PostgreSQL** 연결 문자열 (`?sslmode=require` 포함 권장).
+   - `NEXTAUTH_SECRET` — `openssl rand -base64 32` 등으로 생성한 임의 문자열.
+   - `NEXTAUTH_URL` — 배포 후 표시되는 URL (예: `https://<프로젝트명>.vercel.app`). Preview/Production 각각 설정 가능.
+   - (선택) `OPENAI_API_KEY`
+3. 첫 배포 전에 DB에 스키마 반영: 로컬에서 프로덕션 `DATABASE_URL`로 `npx prisma db push` 또는 마이그레이션 적용.
+4. Redeploy 후 동일 URL로 로그인·API 동작을 확인.
+
+`web/vercel.json`에 `framework: nextjs`, 기본 리전 `icn1`을 넣어 두었습니다. 리전은 Vercel 대시보드에서 변경할 수 있습니다.
 
 ## API 요약
 
