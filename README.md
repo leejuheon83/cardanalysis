@@ -20,6 +20,13 @@ npm start
 브라우저에서 **http://localhost:3001/design-preview.html** 로 접속하세요.  
 (파일을 `file://`로 직접 열면 브라우저 보안상 API 업로드가 막힐 수 있습니다.)
 
+### 서버(`server/`) 보안 요약
+
+- **운영(`NODE_ENV=production`)** 에서는 `SESSION_SECRET`(32자+), `CARD_MONITOR_ADMIN_PASSWORD`(12자+) **필수**이며, 미설정 시 프로세스가 종료됩니다. `server/.env.example` 참고.
+- **개발**: 비밀번호 미설정 시 경고 후 기본 `admin` / `admin` (인터넷에 노출되지 않는 로컬에서만 사용).
+- **CORS**: 운영에서는 `ALLOWED_ORIGINS`에 허용 출처만 나열하세요. 미설정 시 브라우저 교차 출처 요청은 거부됩니다.
+- **기타**: Helmet 보조 헤더, 로그인·API **레이트 리밋**, 업로드 **확장자·MIME 검사**, 배치 ID **UUID 검증**, 로그인 실패 시 **지연·타이밍 안전 비교**.
+
 ## API 요약
 
 | 메서드 | 경로 | 설명 |

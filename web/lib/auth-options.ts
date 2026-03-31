@@ -3,6 +3,16 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
+if (
+  process.env.NODE_ENV === "production" &&
+  (!process.env.NEXTAUTH_SECRET ||
+    process.env.NEXTAUTH_SECRET.length < 32)
+) {
+  throw new Error(
+    "NEXTAUTH_SECRET은 프로덕션에서 필수입니다(32자 이상). Vercel Environment Variables에 설정하세요.",
+  );
+}
+
 const devFallbackSecret =
   "local-dev-only-nextauth-secret-do-not-use-in-production-min-32";
 
@@ -23,7 +33,10 @@ export const authOptions: NextAuthOptions = {
         if (!user) return null;
 
         const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          await new Promise((r) => setTimeout(r, 100 + Math.random() * 120));
+          return null;
+        }
 
         return {
           id: user.id,

@@ -69,6 +69,13 @@ npm run dev
 
 `web/vercel.json`에 `framework: nextjs`, 기본 리전 `icn1`을 넣어 두었습니다. 리전은 Vercel 대시보드에서 변경할 수 있습니다.
 
+### 보안
+
+- 프로덕션 빌드는 **`NEXTAUTH_SECRET` 32자 이상**이 없으면 시작하지 않습니다.
+- HTTP 응답에 `X-Frame-Options: DENY`, `HSTS`(프로덕션), `COOP` 등 기본 보안 헤더를 붙입니다 (`next.config.mjs`).
+- 로그인 실패 시 bcrypt 분기에 짧은 **랜덤 지연**을 두어 타이밍 추측을 어렵게 했습니다.
+- 운영에서는 `prisma/seed.ts` 기본 비밀번호에 의존하지 말고, 시드·계정 비밀번호를 **강한 값으로 교체**하고 DB를 주기적으로 점검하세요.
+
 ## API 요약
 
 | 메서드 | 경로 | 설명 |
