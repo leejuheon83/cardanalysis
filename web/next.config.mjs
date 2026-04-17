@@ -33,7 +33,17 @@ const nextConfig = {
         { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
       );
     }
-    return [{ source: "/:path*", headers: security }];
+    const htmlNoCache = [
+      {
+        key: "Cache-Control",
+        value: "private, no-store, max-age=0, must-revalidate",
+      },
+    ];
+    return [
+      { source: "/:path*", headers: security },
+      { source: "/design-preview.html", headers: htmlNoCache },
+      { source: "/login.html", headers: htmlNoCache },
+    ];
   },
 };
 

@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    http-equiv="Cache-Control"
+    content="no-store, max-age=0, must-revalidate"
+  />
   <title>법인카드 모니터링 — 로컬 디자인 미리보기</title>
   <style>
     :root {
@@ -733,13 +737,34 @@
 
   var apiLabel = document.getElementById('apiBaseLabel');
   var useServerEl = document.getElementById('useServer');
+
+  function readJsonResponse(res) {
+    return res.text().then(function (text) {
+      var trimmed = (text || '').trim();
+      if (!trimmed) {
+        throw new Error(
+          'HTTP ' +
+            res.status +
+            ' — 응답이 비어 있습니다. 서버·DB(Vercel DATABASE_URL)·타임아웃을 확인하세요.',
+        );
+      }
+      try {
+        return JSON.parse(trimmed);
+      } catch (parseErr) {
+        var preview =
+          trimmed.length > 280 ? trimmed.slice(0, 280) + '…' : trimmed;
+        throw new Error('HTTP ' + res.status + ' — JSON 파싱 실패: ' + preview);
+      }
+    });
+  }
+
   if (apiLabel) {
     apiLabel.textContent = API_BASE || '정적 배포 모드 — 브라우저 내 로컬 검토';
   }
   if (apiLabel && API_BASE) {
     fetch(API_BASE + '/api/health', { credentials: 'include' })
       .then(function (r) {
-        return r.json();
+        return readJsonResponse(r);
       })
       .then(function (j) {
         if (!j || !j.database) return;
@@ -908,26 +933,6 @@
 
   function renderFromApi(payload) {
     paintUploadTable(payload.headers, payload.rows, payload.kpi);
-  }
-
-  function readJsonResponse(res) {
-    return res.text().then(function (text) {
-      var trimmed = (text || '').trim();
-      if (!trimmed) {
-        throw new Error(
-          'HTTP ' +
-            res.status +
-            ' — 응답이 비어 있습니다. 서버·DB(Vercel DATABASE_URL)·타임아웃을 확인하세요.',
-        );
-      }
-      try {
-        return JSON.parse(trimmed);
-      } catch (parseErr) {
-        var preview =
-          trimmed.length > 280 ? trimmed.slice(0, 280) + '…' : trimmed;
-        throw new Error('HTTP ' + res.status + ' — JSON 파싱 실패: ' + preview);
-      }
-    });
   }
 
   function uploadToServer(file) {
