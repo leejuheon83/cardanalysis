@@ -1,6 +1,8 @@
 /**
- * 거래 행 자동 검토 규칙 (클라이언트와 동일 정책 유지)
+ * 거래 행 자동 검토 규칙 (클라이언트·design-preview와 동일 정책 유지)
  */
+
+import { policyMatches } from './cardMonitorPolicies.js';
 
 export const AMOUNT_KEYS = [
   '금액',
@@ -142,23 +144,73 @@ export function autoReview(row) {
   return { risk, status, badge, rowClass, reason };
 }
 
+const NORMAL_REASON = '자동 규칙 미충족(정상 구간)';
+
 /**
- * @param {Array<Record<string, unknown>>} objects - 헤더 키 + _amount, _merchant, _date
+ * @param {{ _amount?: number, _merchant?: string, _date?: unknown }} row
+ * @param {Array<Record<string, unknown>>} [policies]
  */
-export function summarizeKpi(objects) {
+export function autoReviewWithPolicies(row, policies = []) {
+  const base = autoReview(row);
+  let risk = base.risk;
+  const flags =
+    base.reason === NORMAL_REASON ? [] : base.reason.split(' · ');
+
+  for (let i = 0; i < policies.length; i++) {
+    const p = policies[i];
+    if (policyMatches(p, row)) {
+      risk += 18;
+      flags.push('정책: ' + p.name);
+    }
+  }
+  risk = Math.min(99, Math.round(risk));
+
+  let status;
+  let badge;
+  let rowClass;
+  if (risk >= 72) {
+    status = '위반 의심';
+    badge = 'badge-violation';
+    rowClass = 'row-flag-violation';
+  } else if (risk >= 48) {
+    status = '검토 대기';
+    badge = 'badge-pending';
+    rowClass = 'row-flag-pending';
+  } else if (risk >= 28) {
+    status = '의심';
+    badge = 'badge-suspicious';
+    rowClass = 'row-flag-suspicious';
+  } else {
+    status = '정상';
+    badge = 'badge-approved';
+    rowClass = '';
+  }
+
+  const reason = flags.length > 0 ? flags.join(' · ') : NORMAL_REASON;
+
+  return { risk, status, badge, rowClass, reason };
+}
+
+export function summarizeKpiFromReviews(reviews) {
   let pending = 0;
   let viol = 0;
   let ok = 0;
-  for (const o of objects) {
-    const ev = autoReview(o);
+  for (const ev of reviews) {
     if (ev.status === '위반 의심') viol += 1;
     else if (ev.status === '정상') ok += 1;
     else pending += 1;
   }
   return {
-    total: objects.length,
+    total: reviews.length,
     reviewPending: pending,
     violation: viol,
     ok,
   };
+}
+
+/**
+ * @param {Array<Record<string, unknown>>} objects - 헤더 키 + _amount, _merchant, _date
+ */
+export function summarizeKpi(objects) {
+  return summarizeKpiFromReviews(objects.map((o) => autoReview(o)));
 }

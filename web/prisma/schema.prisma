@@ -388,3 +388,34 @@ model AuditLog {
   payload    Json?
   createdAt  DateTime @default(now())
 }
+
+/// design-preview / 엑셀 배치 업로드 (Express SQLite·Firestore 대응)
+model CardImportBatch {
+  id           String           @id
+  filename     String
+  sheetName    String?
+  headersJson  String           @db.Text
+  createdAt    DateTime         @default(now())
+  rowCount     Int
+  kpiTotal     Int
+  kpiReview    Int
+  kpiViolation Int
+  kpiOk        Int
+  rows         CardImportRow[]
+
+  @@index([createdAt])
+}
+
+model CardImportRow {
+  id           Int             @id @default(autoincrement())
+  batchId      String
+  batch        CardImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  rowIndex     Int
+  rawJson      String          @db.Text
+  riskScore    Int
+  reviewStatus String
+  badgeClass   String
+  reason       String          @db.Text
+
+  @@index([batchId, rowIndex])
+}

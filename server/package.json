@@ -2,7 +2,7 @@
   "name": "card-monitor-api",
   "version": "0.1.0",
   "private": true,
-  "description": "법인카드 엑셀 업로드 · 서버 자동 검토 API (SQLite)",
+  "description": "법인카드 엑셀 업로드 · 서버 자동 검토 API (SQLite 또는 Firebase Firestore)",
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "express-rate-limit": "^7.4.1",
     "express-session": "^1.19.0",
+    "firebase-admin": "^13.0.0",
     "helmet": "^8.0.0",
     "multer": "^1.4.5-lts.1",
     "sql.js": "^1.12.0",

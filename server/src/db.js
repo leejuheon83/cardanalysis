@@ -1,189 +1,51 @@
-import initSqlJs from 'sql.js';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+const useFirestore =
+  process.env.DATABASE_BACKEND === 'firestore' ||
+  process.env.USE_FIREBASE_FIRESTORE === '1' ||
+  process.env.USE_FIRESTORE === '1';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const pkgRoot = path.join(__dirname, '..');
-const dataDir = path.join(pkgRoot, 'data');
-const dbPath = path.join(dataDir, 'app.db');
-
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+/** @returns {'sqlite' | 'firestore'} */
+export function getDatabaseBackend() {
+  return useFirestore ? 'firestore' : 'sqlite';
 }
 
-const SQL = await initSqlJs({
-  locateFile: (file) =>
-    path.join(pkgRoot, 'node_modules', 'sql.js', 'dist', file),
-});
+/** @type {Promise<typeof import('./dbSqlite.js')> | null} */
+let sqliteModPromise = null;
+/** @type {Promise<typeof import('./dbFirestore.js')> | null} */
+let firestoreModPromise = null;
 
-let filebuffer = null;
-if (fs.existsSync(dbPath)) {
-  filebuffer = new Uint8Array(fs.readFileSync(dbPath));
-}
-const db = new SQL.Database(filebuffer);
-
-function persist() {
-  const data = db.export();
-  fs.writeFileSync(dbPath, Buffer.from(data));
+function loadSqlite() {
+  if (!sqliteModPromise) sqliteModPromise = import('./dbSqlite.js');
+  return sqliteModPromise;
 }
 
-db.exec(`
-CREATE TABLE IF NOT EXISTS import_batches (
-  id TEXT PRIMARY KEY,
-  filename TEXT NOT NULL,
-  sheet_name TEXT,
-  headers_json TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  row_count INTEGER NOT NULL,
-  kpi_total INTEGER NOT NULL,
-  kpi_review INTEGER NOT NULL,
-  kpi_violation INTEGER NOT NULL,
-  kpi_ok INTEGER NOT NULL
-);
+function loadFirestore() {
+  if (!firestoreModPromise) firestoreModPromise = import('./dbFirestore.js');
+  return firestoreModPromise;
+}
 
-CREATE TABLE IF NOT EXISTS import_rows (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  batch_id TEXT NOT NULL,
-  row_index INTEGER NOT NULL,
-  raw_json TEXT NOT NULL,
-  risk_score INTEGER NOT NULL,
-  review_status TEXT NOT NULL,
-  badge_class TEXT NOT NULL,
-  reason TEXT NOT NULL,
-  FOREIGN KEY (batch_id) REFERENCES import_batches(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_import_rows_batch ON import_rows(batch_id);
-
-CREATE TABLE IF NOT EXISTS audit_logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  occurred_at TEXT NOT NULL,
-  action TEXT NOT NULL,
-  entity_type TEXT,
-  entity_id TEXT,
-  detail_json TEXT
-);
-`);
-
-db.exec('PRAGMA foreign_keys = ON');
-persist();
-
-export function insertImportBatch({
-  id,
-  filename,
-  sheetName,
-  headers,
-  kpi,
-  rows,
-}) {
-  const now = new Date().toISOString();
-  db.run('BEGIN TRANSACTION');
-  try {
-    db.run(
-      `INSERT INTO import_batches (
-        id, filename, sheet_name, headers_json, created_at,
-        row_count, kpi_total, kpi_review, kpi_violation, kpi_ok
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        filename,
-        sheetName || '',
-        JSON.stringify(headers),
-        now,
-        rows.length,
-        kpi.total,
-        kpi.reviewPending,
-        kpi.violation,
-        kpi.ok,
-      ],
-    );
-
-    const insRow = db.prepare(
-      `INSERT INTO import_rows (
-        batch_id, row_index, raw_json, risk_score, review_status, badge_class, reason
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    );
-
-    rows.forEach((row, i) => {
-      insRow.run([
-        id,
-        i,
-        JSON.stringify(row.raw),
-        row.review.risk,
-        row.review.status,
-        row.review.badge,
-        row.review.reason,
-      ]);
-    });
-    insRow.free();
-
-    db.run(
-      `INSERT INTO audit_logs (occurred_at, action, entity_type, entity_id, detail_json)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        now,
-        'import.upload',
-        'import_batch',
-        id,
-        JSON.stringify({ filename, rowCount: rows.length }),
-      ],
-    );
-    db.run('COMMIT');
-  } catch (e) {
-    db.run('ROLLBACK');
-    throw e;
+export async function insertImportBatch(payload) {
+  if (useFirestore) {
+    const m = await loadFirestore();
+    return m.insertImportBatch(payload);
   }
-  persist();
+  const m = await loadSqlite();
+  m.insertImportBatch(payload);
 }
 
-export function listBatches(limit = 50) {
-  const stmt = db.prepare(
-    `SELECT id, filename, sheet_name, created_at, row_count,
-            kpi_total, kpi_review, kpi_violation, kpi_ok
-     FROM import_batches
-     ORDER BY created_at DESC
-     LIMIT ?`,
-  );
-  stmt.bind([limit]);
-  const out = [];
-  while (stmt.step()) {
-    out.push(stmt.getAsObject());
+export async function listBatches(limit = 50) {
+  if (useFirestore) {
+    const m = await loadFirestore();
+    return m.listBatches(limit);
   }
-  stmt.free();
-  return out;
+  const m = await loadSqlite();
+  return m.listBatches(limit);
 }
 
-export function getBatchWithRows(batchId) {
-  const bstmt = db.prepare(`SELECT * FROM import_batches WHERE id = ?`);
-  bstmt.bind([batchId]);
-  if (!bstmt.step()) {
-    bstmt.free();
-    return null;
+export async function getBatchWithRows(batchId) {
+  if (useFirestore) {
+    const m = await loadFirestore();
+    return m.getBatchWithRows(batchId);
   }
-  const batch = bstmt.getAsObject();
-  bstmt.free();
-
-  const headers = JSON.parse(batch.headers_json);
-  const rstmt = db.prepare(
-    `SELECT row_index, raw_json, risk_score, review_status, badge_class, reason
-     FROM import_rows WHERE batch_id = ? ORDER BY row_index ASC`,
-  );
-  rstmt.bind([batchId]);
-  const rows = [];
-  while (rstmt.step()) {
-    const r = rstmt.getAsObject();
-    rows.push({
-      rowIndex: r.row_index,
-      raw: JSON.parse(r.raw_json),
-      risk_score: r.risk_score,
-      review_status: r.review_status,
-      badge_class: r.badge_class,
-      reason: r.reason,
-    });
-  }
-  rstmt.free();
-  return { batch, headers, rows };
+  const m = await loadSqlite();
+  return m.getBatchWithRows(batchId);
 }
-
-export { db, dbPath };

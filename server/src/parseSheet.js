@@ -1,12 +1,26 @@
 import XLSX from 'xlsx';
-import { mapHeaders, parseAmount, autoReview, summarizeKpi } from './reviewEngine.js';
+import { defaultPolicies } from './cardMonitorPolicies.js';
+import {
+  mapHeaders,
+  parseAmount,
+  autoReviewWithPolicies,
+  summarizeKpiFromReviews,
+} from './reviewEngine.js';
 
 /**
  * 첫 시트 → 헤더 + 객체 배열 + 행별 자동 검토
  * @param {Buffer} buffer
  * @param {string} [filename]
+ * @param {Array<Record<string, unknown>> | null} [policies] null이면 기본 정책 세트
  */
-export function parseWorkbookBuffer(buffer, filename = '') {
+export function parseWorkbookBuffer(buffer, filename = '', policies = null) {
+  const policiesList =
+    policies == null
+      ? defaultPolicies()
+      : Array.isArray(policies)
+        ? policies
+        : defaultPolicies();
+
   const wb = XLSX.read(buffer, { type: 'buffer' });
   const sheetName = wb.SheetNames[0];
   if (!sheetName) {
@@ -53,7 +67,10 @@ export function parseWorkbookBuffer(buffer, filename = '') {
       colMap.idxMerchant >= 0 ? String(line[colMap.idxMerchant] ?? '') : '';
     const dateVal = colMap.idxDate >= 0 ? line[colMap.idxDate] : '';
 
-    const review = autoReview({ _amount: amount, _merchant: merchant });
+    const review = autoReviewWithPolicies(
+      { _amount: amount, _merchant: merchant, _date: dateVal },
+      policiesList,
+    );
     objects.push({
       raw,
       _amount: amount,
@@ -63,12 +80,7 @@ export function parseWorkbookBuffer(buffer, filename = '') {
     });
   }
 
-  const kpi = summarizeKpi(
-    objects.map((x) => ({
-      _amount: x._amount,
-      _merchant: x._merchant,
-    })),
-  );
+  const kpi = summarizeKpiFromReviews(objects.map((x) => x.review));
 
   return {
     sheetName,

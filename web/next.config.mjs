@@ -1,7 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: { serverActions: { bodySizeLimit: "4mb" } },
+  experimental: { serverActions: { bodySizeLimit: "25mb" } },
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: "/",
+        destination: "/design-preview.html",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     const security = [
       { key: "X-Frame-Options", value: "DENY" },

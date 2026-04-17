@@ -1,3 +1,4 @@
+import './bootstrapEnv.js';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
@@ -8,7 +9,16 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import { parseWorkbookBuffer } from './parseSheet.js';
-import { insertImportBatch, listBatches, getBatchWithRows } from './db.js';
+import {
+  parsePoliciesFromFormString,
+  parsePoliciesFromJson,
+} from './cardMonitorPolicies.js';
+import {
+  insertImportBatch,
+  listBatches,
+  getBatchWithRows,
+  getDatabaseBackend,
+} from './db.js';
 import XLSX from 'xlsx';
 import {
   assertProductionSecurityConfig,
@@ -106,11 +116,12 @@ function requireAuth(req, res, next) {
 }
 
 app.get('/api/health', (_req, res) => {
+  const database = getDatabaseBackend();
   if (process.env.NODE_ENV === 'production') {
-    res.json({ ok: true });
+    res.json({ ok: true, database });
     return;
   }
-  res.json({ ok: true, service: 'card-monitor-api' });
+  res.json({ ok: true, service: 'card-monitor-api', database });
 });
 
 const ADMIN_USER = process.env.CARD_MONITOR_ADMIN_USER || 'admin';
@@ -174,7 +185,7 @@ app.get('/design-preview.html', (req, res, next) => {
   });
 });
 
-app.post('/api/import/upload', requireAuth, upload.single('file'), (req, res) => {
+app.post('/api/import/upload', requireAuth, upload.single('file'), async (req, res) => {
   try {
     if (!req.file?.buffer) {
       res.status(400).json({ error: 'file 필드가 필요합니다.' });
@@ -190,7 +201,7 @@ app.post('/api/import/upload', requireAuth, upload.single('file'), (req, res) =>
       return;
     }
     const id = crypto.randomUUID();
-    insertImportBatch({
+    await insertImportBatch({
       id,
       filename,
       sheetName: parsed.sheetName,
@@ -227,8 +238,9 @@ app.post('/api/import/upload', requireAuth, upload.single('file'), (req, res) =>
   }
 });
 
-app.post('/api/import/sample', requireAuth, (_req, res) => {
+app.post('/api/import/sample', requireAuth, async (req, res) => {
   try {
+    const policiesList = parsePoliciesFromJson(req.body?.policies);
     const ws = XLSX.utils.aoa_to_sheet([
       ['거래일시', '가맹점명', '이용금액', '비고'],
       ['2025-03-26 12:30', '○○식당', 35000, ''],
@@ -240,9 +252,9 @@ app.post('/api/import/sample', requireAuth, (_req, res) => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '거래내역');
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    const parsed = parseWorkbookBuffer(buf, 'sample.xlsx');
+    const parsed = parseWorkbookBuffer(buf, 'sample.xlsx', policiesList);
     const id = crypto.randomUUID();
-    insertImportBatch({
+    await insertImportBatch({
       id,
       filename: 'sample.xlsx',
       sheetName: parsed.sheetName,
@@ -271,23 +283,23 @@ app.post('/api/import/sample', requireAuth, (_req, res) => {
   }
 });
 
-app.get('/api/import/batches', requireAuth, (_req, res) => {
+app.get('/api/import/batches', requireAuth, async (_req, res) => {
   try {
-    const rows = listBatches(100);
+    const rows = await listBatches(100);
     res.json({ batches: rows });
   } catch (e) {
     res.status(500).json({ error: '목록 조회 실패' });
   }
 });
 
-app.get('/api/import/batches/:id', requireAuth, (req, res) => {
+app.get('/api/import/batches/:id', requireAuth, async (req, res) => {
   try {
     const id = req.params.id;
     if (!isUuidParam(id)) {
       res.status(400).json({ error: '잘못된 배치 ID입니다.' });
       return;
     }
-    const data = getBatchWithRows(id);
+    const data = await getBatchWithRows(id);
     if (!data) {
       res.status(404).json({ error: '배치를 찾을 수 없습니다.' });
       return;
@@ -330,6 +342,9 @@ const server = app.listen(PORT, () => {
   console.log(`서버 http://localhost:${PORT}`);
   console.log(`로그인: http://localhost:${PORT}/login.html`);
   console.log(`대시보드: http://localhost:${PORT}/design-preview.html`);
+  console.log(
+    `[저장소] ${getDatabaseBackend() === 'firestore' ? 'Firebase Firestore' : 'SQLite (server/data/app.db)'}`,
+  );
 });
 server.on('error', (err) => {
   if (err && err.code === 'EADDRINUSE') {

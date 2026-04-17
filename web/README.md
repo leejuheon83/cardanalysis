@@ -61,9 +61,10 @@ npm run dev
 1. [Vercel](https://vercel.com)에서 GitHub 저장소 **Import** → **Root Directory**를 `web`으로 지정.
 2. **Environment Variables** (프로젝트 → Settings → Environment Variables):
    - `DATABASE_URL` — Neon / Supabase / Vercel Postgres 등 **PostgreSQL** 연결 문자열 (`?sslmode=require` 포함 권장).
-   - `NEXTAUTH_SECRET` — `openssl rand -base64 32` 등으로 생성한 임의 문자열.
-   - `NEXTAUTH_URL` — 배포 후 표시되는 URL (예: `https://<프로젝트명>.vercel.app`). Preview/Production 각각 설정 가능.
+   - `NEXTAUTH_SECRET` — `openssl rand -base64 32` 등으로 생성한 임의 문자열 (NextAuth + **법인카드 모니터링 정적 대시보드** 세션 서명에도 사용).
+   - `NEXTAUTH_URL` — 배포 후 표시되는 URL (프로덕션 예: `https://sbsmccard.vercel.app`). Preview/Production 각각 설정 가능.
    - (선택) `OPENAI_API_KEY`
+   - **법인카드 모니터링 UI** (`/design-preview.html`): 첫 방문 시 `/login.html`에서 로그인. 운영에서는 `CARD_MONITOR_ADMIN_PASSWORD`(12자+ 권장)와 필요 시 `CARD_MONITOR_ADMIN_USER` 설정. 미설정 시 개발용 기본 `admin`/`admin`만 사용합니다.
 3. 첫 배포 전에 DB에 스키마 반영: 로컬에서 프로덕션 `DATABASE_URL`로 `npx prisma db push` 또는 마이그레이션 적용.
 4. Redeploy 후 동일 URL로 로그인·API 동작을 확인.
 

@@ -1,0 +1,26 @@
+# Vercel에 GitHub를 연결했다면 푸시만으로 자동 배포됩니다. 이 워크플로는 CLI 시크릿으로 수동 재배포할 때만 쓰세요.
+#
+# GitHub → Settings → Secrets → Actions:
+#   VERCEL_TOKEN        (Vercel → Settings → Tokens)
+#   VERCEL_ORG_ID       (프로젝트 → Settings → General)
+#   VERCEL_PROJECT_ID   (동일)
+
+name: Vercel Production (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: web
+          vercel-args: '--prod'
