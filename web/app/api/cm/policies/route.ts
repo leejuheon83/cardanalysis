@@ -10,7 +10,9 @@ const BLOB_PATH = "card-monitor/policies.json";
 const LOCAL_FILE = path.join(process.cwd(), ".data", "policies.json");
 const MAX_POLICIES = 200;
 
-const hasBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;
+// 구형(BLOB_READ_WRITE_TOKEN) 또는 신형(BLOB_STORE_ID + Vercel OIDC) 연결 모두 지원
+const hasBlob = () =>
+  !!process.env.BLOB_READ_WRITE_TOKEN || !!process.env.BLOB_STORE_ID;
 
 async function readPolicies(): Promise<CardPolicy[]> {
   if (hasBlob()) {
