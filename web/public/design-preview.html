@@ -591,7 +591,7 @@
 
       <section id="page-policy" class="page-panel" aria-labelledby="pol-title">
         <h2 class="page-title" id="pol-title">정책 관리</h2>
-        <p class="page-sub">접대비 운영지침(2026.8.1) 규칙은 시스템에 내장되어 항상 적용됩니다. 아래에서 추가 규칙(키워드·금액·시간대)을 등록할 수 있습니다.</p>
+        <p class="page-sub">접대비 운영지침(2026.8.1) 규칙은 시스템에 내장되어 항상 적용됩니다. 추가 규칙(키워드·금액·시간대)은 서버에 저장되어 로그인한 모든 사용자에게 동일하게 적용됩니다. <span class="muted" id="policySyncStatus"></span></p>
         <div class="card">
           <div class="card-h">지침 내장 규칙 — 접대비 운영지침(2026.8.1 시행)</div>
           <div class="table-wrap">
@@ -723,6 +723,39 @@
       : API_BASE
         ? API_BASE + '/api/cm/auth'
         : '';
+  // 추가 정책 서버 저장소 — Next.js 배포에서만 지원(Express·file 모드는 브라우저 저장)
+  var POLICIES_API =
+    !usingStaticAuth && API_BASE && AUTH_BASE.indexOf('/api/cm/auth') !== -1
+      ? API_BASE + '/api/cm/policies'
+      : '';
+  var policiesCache = null;
+
+  function setPolicySyncStatus(text) {
+    var el = document.getElementById('policySyncStatus');
+    if (el) el.textContent = text || '';
+  }
+
+  function syncPoliciesFromServer() {
+    if (!POLICIES_API) return;
+    fetch(POLICIES_API, { credentials: 'include' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || !Array.isArray(j.policies)) return;
+        policiesCache = j.policies.map(normalizePolicy);
+        try {
+          localStorage.setItem(POLICY_KEY, JSON.stringify(policiesCache));
+        } catch (e) {}
+        renderPolicyTable();
+        reapplyPoliciesToUploadData();
+        setPolicySyncStatus('서버 동기화됨 (추가 규칙 ' + policiesCache.length + '개)');
+      })
+      .catch(function () {
+        setPolicySyncStatus('서버 동기화 실패 — 이 브라우저에 저장된 규칙 사용 중');
+      });
+  }
 
   function isStaticAuthed() {
     try {
@@ -1824,18 +1857,46 @@
   }
 
   function loadPolicies() {
+    if (policiesCache) return policiesCache;
     try {
       var raw = localStorage.getItem(POLICY_KEY);
-      if (!raw) return defaultPolicies();
-      var arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr.map(normalizePolicy) : defaultPolicies();
+      var arr = raw ? JSON.parse(raw) : null;
+      policiesCache = Array.isArray(arr) ? arr.map(normalizePolicy) : defaultPolicies();
     } catch (e) {
-      return defaultPolicies();
+      policiesCache = defaultPolicies();
     }
+    return policiesCache;
   }
 
   function savePolicies(list) {
-    localStorage.setItem(POLICY_KEY, JSON.stringify(list));
+    policiesCache = list.slice();
+    try {
+      localStorage.setItem(POLICY_KEY, JSON.stringify(list));
+    } catch (e) {}
+    if (!POLICIES_API) return;
+    setPolicySyncStatus('서버 저장 중…');
+    fetch(POLICIES_API, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ policies: list }),
+    })
+      .then(function (r) {
+        return r
+          .json()
+          .catch(function () {
+            return {};
+          })
+          .then(function (j) {
+            if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+          });
+      })
+      .then(function () {
+        setPolicySyncStatus('서버에 저장됨 — 모든 사용자에게 동일 적용');
+      })
+      .catch(function (ex) {
+        setPolicySyncStatus('서버 저장 실패: ' + (ex.message || ex));
+      });
   }
 
   function renderPolicyTable() {
@@ -2218,6 +2279,7 @@
   if (!PAGE_LABELS[hash]) hash = 'dashboard';
   showPage(hash);
   renderMonitorTable();
+  syncPoliciesFromServer();
 
   try {
     var qs = new URLSearchParams(window.location.search || '');
