@@ -506,6 +506,7 @@
                   <option value="의심">의심</option>
                   <option value="검토 대기">검토 대기</option>
                   <option value="위반 의심">위반 의심</option>
+                  <option value="위반 확정">위반 확정</option>
                 </select>
               </label>
               <label class="muted" style="display:flex;align-items:center;gap:6px;">
@@ -580,6 +581,7 @@
                   <th>리스크</th>
                   <th>상태</th>
                   <th>사유</th>
+                  <th>검토 조치</th>
                 </tr>
               </thead>
               <tbody id="violationTableBody"></tbody>
@@ -946,9 +948,9 @@
     var total = rows.length;
     var reviewPending = 0, viol = 0, ok = 0;
     rows.forEach(function (r) {
-      var st = r.review_status;
-      if (st === '위반 의심') viol++;
-      else if (st === '정상') ok++;
+      var st = String(r.review_status || '');
+      if (st.indexOf('위반') === 0) viol++;
+      else if (st.indexOf('정상') === 0) ok++;
       else reviewPending++;
     });
     return { total: total, reviewPending: reviewPending, violation: viol, ok: ok };
@@ -1008,10 +1010,13 @@
     paintUploadTable(f.headers, rows, kpi, { displayOnly: true });
   }
 
-  /** 정책(localStorage) 변경 후 이미 올려둔 업로드 결과에 동일 규칙으로 재검토 */
+  /** 정책 변경 후 이미 올려둔 업로드 결과에 동일 규칙으로 재검토 (검토자 조치는 유지) */
   function reapplyPoliciesToUploadData() {
     var f = window.__uploadFull;
     if (!f || !f.headers || !f.rows || !f.rows.length) return;
+    var manualDecisions = f.rows.map(function (r) {
+      return r.manual_decision || null;
+    });
     var hdrs = f.headers;
     var cm = mapHeaders(hdrs);
     var mapped = f.rows.map(function (row) {
@@ -1054,6 +1059,10 @@
         };
       }),
     };
+    manualDecisions.forEach(function (decision, i) {
+      if (decision) applyManualDecision(i, decision, { skipRefresh: true });
+    });
+    window.__uploadFull.kpi = computeKpiFromRows(window.__uploadFull.rows);
     refreshUploadTableView();
   }
 
@@ -1711,6 +1720,48 @@
     renderMonitorTable();
   }
 
+  // 검토자 조치 — 자동 판정을 사람이 확정(정상 처리 / 위반 확정)하거나 자동 판정으로 되돌린다
+  function applyManualDecision(index, decision, opts) {
+    var f = window.__uploadFull;
+    var s = window.__uploadState;
+    if (!f || !f.rows[index] || !s || !s.rows[index]) return;
+    [f.rows[index], s.rows[index]].forEach(function (row) {
+      if (!row._auto) {
+        row._auto = {
+          status: row.review_status,
+          badge: row.badge_class,
+          row_class: row.row_class || '',
+          reason: row.reason || '',
+        };
+      }
+      row.manual_decision = decision;
+      if (decision === 'ok') {
+        row.review_status = '정상';
+        row.badge_class = 'badge-approved';
+        row.row_class = '';
+        row.reason = row._auto.reason + ' · 검토자 확인: 정상 처리';
+      } else if (decision === 'violation') {
+        row.review_status = '위반 확정';
+        row.badge_class = 'badge-violation';
+        row.row_class = 'row-flag-violation';
+        row.reason = row._auto.reason + ' · 검토자 확인: 위반 확정';
+      } else {
+        row.review_status = row._auto.status;
+        row.badge_class = row._auto.badge;
+        row.row_class = row._auto.row_class;
+        row.reason = row._auto.reason;
+        delete row.manual_decision;
+      }
+    });
+    if (!(opts && opts.skipRefresh)) {
+      f.kpi = computeKpiFromRows(f.rows);
+      refreshUploadTableView();
+      refreshViolationTable();
+    }
+  }
+
+  var VIOLATION_STATUSES = ['위반 의심', '위반 확정', '의심', '검토 대기'];
+
   function refreshViolationTable() {
     var body = document.getElementById('violationTableBody');
     var empty = document.getElementById('violationEmpty');
@@ -1724,9 +1775,11 @@
       return;
     }
     if (empty) empty.hidden = true;
-    var need = s.rows.filter(function (r) {
-      var st = r.review_status;
-      return st === '위반 의심' || st === '의심' || st === '검토 대기';
+    var need = [];
+    s.rows.forEach(function (r, idx) {
+      if (VIOLATION_STATUSES.indexOf(r.review_status) !== -1 || r.manual_decision) {
+        need.push({ row: r, idx: idx });
+      }
     });
     if (countEl) countEl.textContent = need.length ? need.length + '건 검토 대상' : '검토 대상 없음';
     if (!need.length) {
@@ -1737,7 +1790,8 @@
       }
       return;
     }
-    need.forEach(function (r) {
+    need.forEach(function (item) {
+      var r = item.row;
       var raw = r.raw || {};
       var tr = document.createElement('tr');
       if (r.row_class) tr.className = r.row_class;
@@ -1760,6 +1814,28 @@
       tdY.className = 'reason-cell';
       tdY.textContent = r.reason || '';
       tr.appendChild(tdY);
+      var tdA = document.createElement('td');
+      var sel = document.createElement('select');
+      sel.className = 'input-text';
+      sel.style.minWidth = '150px';
+      [
+        ['auto', '자동 판정 유지'],
+        ['ok', '정상 처리(확인 완료)'],
+        ['violation', '위반 확정'],
+      ].forEach(function (pair) {
+        var op = document.createElement('option');
+        op.value = pair[0];
+        op.textContent = pair[1];
+        sel.appendChild(op);
+      });
+      sel.value = r.manual_decision || 'auto';
+      (function (idx) {
+        sel.addEventListener('change', function () {
+          applyManualDecision(idx, sel.value);
+        });
+      })(item.idx);
+      tdA.appendChild(sel);
+      tr.appendChild(tdA);
       body.appendChild(tr);
     });
   }
@@ -2021,7 +2097,7 @@
     };
   }
 
-  var REPORT_STATUS_ORDER = ['위반 의심', '검토 대기', '의심', '정상'];
+  var REPORT_STATUS_ORDER = ['위반 확정', '위반 의심', '검토 대기', '의심', '정상'];
 
   function renderReport() {
     var empty = document.getElementById('reportEmpty');
