@@ -193,24 +193,6 @@
     .badge-violation { background: var(--semantic-violation-bg); color: var(--semantic-violation-fg); border-color: #FECACA; }
     .badge-approved { background: var(--semantic-approved-bg); color: var(--semantic-approved-fg); border-color: #A7F3D0; }
     .row-pending { border-left: 3px solid var(--primary-brand); }
-    .ai-box {
-      border: 1px dashed #BFDBFE;
-      background: var(--primary-50);
-      border-radius: 8px;
-      padding: 16px;
-      margin-top: 16px;
-      max-width: 65ch;
-    }
-    .ai-box h4 { margin: 0 0 8px; font-size: 13px; color: var(--sbs-navy); }
-    .ai-box p { margin: 0; line-height: 1.6; font-size: 13px; }
-    .human-box {
-      border: 1px solid #CBD5E1;
-      border-radius: 8px;
-      padding: 16px;
-      margin-top: 12px;
-      max-width: 65ch;
-    }
-    .human-box h4 { margin: 0 0 8px; font-size: 13px; }
     .muted { color: var(--foreground-muted); font-size: 12px; }
     .tabular { font-variant-numeric: tabular-nums; }
     footer {
@@ -270,16 +252,14 @@
       min-width: 200px;
     }
     .form-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
-    .notify-item {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-    }
-    .notify-item.unread { background: var(--primary-50); }
     .empty-state { padding: 32px; text-align: center; color: var(--foreground-muted); font-size: 14px; }
+    @media print {
+      .topbar, .sidebar, .report-toolbar { display: none !important; }
+      .layout { display: block; }
+      main { padding: 0; }
+      .card { break-inside: avoid; box-shadow: none; }
+      body { background: #fff; }
+    }
     .card-h-upload-results {
       display: flex;
       flex-wrap: wrap;
@@ -473,15 +453,13 @@
       <div class="nav-item active" role="menuitem" tabindex="0" data-page="dashboard">대시보드</div>
       <div class="nav-item" role="menuitem" tabindex="0" data-page="monitor">거래 모니터링</div>
       <div class="nav-item" role="menuitem" tabindex="0" data-page="violation">위반 검토</div>
-      <div class="nav-item" role="menuitem" tabindex="0" data-page="ai">AI 리스크</div>
       <div class="nav-item" role="menuitem" tabindex="0" data-page="policy">정책 관리</div>
-      <div class="nav-item" role="menuitem" tabindex="0" data-page="notify">알림</div>
-      <div class="nav-item" role="menuitem" tabindex="0" data-page="audit">감사 로그</div>
+      <div class="nav-item" role="menuitem" tabindex="0" data-page="report">리포트</div>
     </aside>
     <main>
       <section id="page-dashboard" class="page-panel active" aria-labelledby="dash-title">
         <h2 class="page-title" id="dash-title">메인 대시보드</h2>
-        <p class="page-sub">엑셀 업로드 시 자동 검토(리스크·상태·사유) · 시맨틱 색 · 표 밀도</p>
+        <p class="page-sub">엑셀 업로드 시 접대비 운영지침(2026.8.1) 기준 자동 검토 — 리스크·상태·사유·전결 구간</p>
 
         <div class="card">
           <div class="card-h">엑셀 / CSV 업로드 → 자동 검토</div>
@@ -491,17 +469,11 @@
               <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" />
               <p class="upload-hint">지원: .xlsx, .xls, .csv · 첫 시트 기준 · 헤더 행 포함 권장<br />
                 인식 컬럼 예: <strong>일시/거래일시/날짜</strong>, <strong>금액/이용금액</strong>, <strong>가맹점/상호</strong> (한글·영문 혼용 자동 매칭)<br />
-                <strong>서버 모드</strong>: 같은 도메인(예: Vercel)에서는 체크 후 업로드하면 PostgreSQL에 저장됩니다. 로컬 Express(포트 3001)를 쓸 때는 <code>cd server &amp;&amp; npm start</code> 후 해당 주소로 접속하세요.</p>
+                업로드한 데이터는 <strong>브라우저 안에서만</strong> 검토되며 서버에 저장되지 않습니다.</p>
             </div>
-            <div class="toolbar" style="flex-direction: column; align-items: flex-start;">
-              <label class="muted" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="useServer" checked />
-                서버에 저장하고 검토 (API) — <code id="apiBaseLabel"></code>
-              </label>
-              <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
-                <button type="button" class="btn btn-primary" id="btnSample" title="데모용 샘플 데이터로 자동 검토">샘플 데이터로 검토</button>
-                <span class="muted" id="uploadStatus"></span>
-              </div>
+            <div class="toolbar">
+              <button type="button" class="btn btn-primary" id="btnSample" title="데모용 샘플 데이터로 자동 검토">샘플 데이터로 검토</button>
+              <span class="muted" id="uploadStatus"></span>
             </div>
             <p class="msg-error" id="uploadError" hidden></p>
           </div>
@@ -593,6 +565,7 @@
         <p class="page-sub">위반 의심·의심 건만 집중 검토합니다. 대시보드에서 업로드한 결과를 불러옵니다.</p>
         <div class="toolbar">
           <button type="button" class="btn btn-primary" id="btnViolationRefresh">업로드 결과에서 새로고침</button>
+          <button type="button" class="btn btn-primary" id="btnViolationXlsx">Excel 다운로드</button>
           <span class="muted" id="violationCount"></span>
         </div>
         <div class="card">
@@ -607,7 +580,6 @@
                   <th>리스크</th>
                   <th>상태</th>
                   <th>사유</th>
-                  <th>조치</th>
                 </tr>
               </thead>
               <tbody id="violationTableBody"></tbody>
@@ -617,43 +589,28 @@
         </div>
       </section>
 
-      <section id="page-ai" class="page-panel" aria-labelledby="ai-title">
-        <h2 class="page-title" id="ai-title">AI 리스크</h2>
-        <p class="page-sub" id="aiPageSub">
-          업로드 거래와 대시보드 필터 범위를 기준으로 규칙·통계 요약을 생성합니다. 생성형 모델 연동 시 이 영역에 API 응답을 바꿔 넣을 수 있습니다.
-        </p>
-        <div class="toolbar">
-          <button type="button" class="btn btn-primary" id="btnAiRefreshData">업로드 데이터로 요약 갱신</button>
-          <button type="button" class="btn btn-primary" id="btnAiRegenerate">다른 각도로 요약</button>
-        </div>
-        <div class="card">
-          <div class="card-h">리스크 요약 · 검토자 결정</div>
-          <div style="padding: 16px;">
-            <div class="ai-box" id="aiSummaryBox">
-              <h4>요약 <span class="muted" id="aiModelTag">(규칙·통계 기반)</span></h4>
-              <p class="muted" id="aiDataContext" style="font-size:12px;margin:0 0 10px;line-height:1.5;"></p>
-              <p id="aiSummaryText">대시보드에서 데이터를 불러오면 이곳에 자동 요약이 표시됩니다.</p>
-              <p class="muted" style="margin-top:8px;">신뢰도(휴리스틱): <span id="aiConfidenceText">—</span></p>
-            </div>
-            <div class="human-box">
-              <h4>검토자 최종 결정</h4>
-              <p class="muted">요약과 별도로 판단·메모를 남깁니다. 입력 중인 글은 브라우저에 초안 저장되며, 확정 시 이력·감사 로그에 남습니다.</p>
-              <textarea id="aiReviewerNote" class="input-text" style="width:100%;min-height:88px;resize:vertical;margin-top:8px;" placeholder="검토 메모 (자동 초안 저장 · 확정 시 이력 보관)"></textarea>
-              <div style="margin-top:12px;">
-                <button type="button" class="btn btn-primary" id="btnAiSaveNote">메모 확정 (이력·감사 로그)</button>
-              </div>
-            </div>
-            <div class="human-box" id="aiMemoHistoryWrap" style="margin-top:12px;padding:14px 16px;" hidden>
-              <h4 style="font-size:13px;margin:0 0 10px;">최근 확정 메모</h4>
-              <ul id="aiMemoHistoryList" style="margin:0;padding-left:18px;font-size:12px;color:var(--foreground-muted);line-height:1.45;"></ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section id="page-policy" class="page-panel" aria-labelledby="pol-title">
         <h2 class="page-title" id="pol-title">정책 관리</h2>
-        <p class="page-sub">자동 검토 규칙 이름·키워드·금액·시간대(선택)를 브라우저에 저장합니다(로컬 프로토타입). 시간을 지정하면 일시 열에서 시각을 읽어 적용합니다.</p>
+        <p class="page-sub">접대비 운영지침(2026.8.1) 규칙은 시스템에 내장되어 항상 적용됩니다. 아래에서 추가 규칙(키워드·금액·시간대)을 등록할 수 있습니다.</p>
+        <div class="card">
+          <div class="card-h">지침 내장 규칙 — 접대비 운영지침(2026.8.1 시행)</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>근거</th><th>규칙</th><th>자동 조치</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>제3조 2호</td><td>건당 30만원 이상 대외 지출은 접대비로 분류</td><td>「접대비 분류 대상」 표시</td></tr>
+                <tr><td>제3조 2호</td><td>골프장·유흥주점 등 접대 목적성 높은 업종</td><td>골프: 분류·증빙 확인 / 유흥: 위반 의심</td></tr>
+                <tr><td>제4조</td><td>전결: ~100만 팀장 · ~300만 국장 · ~500만 본부장 · 초과 대표이사</td><td>전결권자 표시, 고액 구간 리스크 가중</td></tr>
+                <tr><td>제7조</td><td>거래처 경조사비 — 청탁금지법 한도·팀 단위 1회·SBS 계열 지출 금지</td><td>경조사 키워드 감지 시 확인 요청</td></tr>
+                <tr><td>제8조 4호</td><td>동일 건 중복 신청 금지</td><td>일시·가맹점·금액 일치 시 중복 의심</td></tr>
+                <tr><td>제8조 5호</td><td>동일인·동일 가맹점 법인카드 분할 결제 금지</td><td>동일일 동일 가맹점 다건 시 분할 의심 (택시 「티머니모빌리티」·카페 「에스씨케이컴퍼니」 제외)</td></tr>
+                <tr><td>제8조 예시</td><td>접객원을 둔 유흥업소 및 유사 유흥성 업종 집행 금지</td><td>유흥 키워드 감지 시 위반 의심(본부장 보고 필요)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
         <div class="card">
           <div class="card-h">규칙 추가</div>
           <div style="padding: 16px;">
@@ -687,36 +644,68 @@
         </div>
       </section>
 
-      <section id="page-notify" class="page-panel" aria-labelledby="notif-title">
-        <h2 class="page-title" id="notif-title">알림</h2>
-        <p class="page-sub">시스템·검토 이벤트 알림(샘플). 읽음 처리 시 감사 로그에 남깁니다.</p>
-        <div class="toolbar">
-          <button type="button" class="btn" id="btnNotifyMarkAll">모두 읽음</button>
+      <section id="page-report" class="page-panel" aria-labelledby="report-title">
+        <h2 class="page-title" id="report-title">접대비 점검 리포트</h2>
+        <p class="page-sub">접대비 운영지침(2026.8.1) 기준 자동 점검 결과를 요약합니다. 대시보드에서 업로드·샘플 검토 후 생성하세요.</p>
+        <div class="toolbar report-toolbar">
+          <button type="button" class="btn btn-primary" id="btnReportBuild">업로드 결과로 리포트 생성</button>
+          <button type="button" class="btn" id="btnReportPrint">인쇄 / PDF 저장</button>
+          <button type="button" class="btn" id="btnReportCsv">요약 CSV 다운로드</button>
+          <span class="muted" id="reportStatus"></span>
         </div>
-        <div class="card" style="padding:0;">
-          <div id="notifyList"></div>
-        </div>
-      </section>
-
-      <section id="page-audit" class="page-panel" aria-labelledby="audit-title">
-        <h2 class="page-title" id="audit-title">감사 로그</h2>
-        <p class="page-sub">메뉴 이동·정책 변경·알림 읽음·AI 메모 등 주요 동작 기록(최대 200건, 브라우저 저장).</p>
-        <div class="toolbar">
-          <button type="button" class="btn" id="btnAuditClear">로컬 로그 비우기</button>
-        </div>
-        <div class="card">
-          <div class="card-h">최근 이벤트</div>
-          <div class="table-wrap" style="max-height:420px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>시각</th>
-                  <th>동작</th>
-                  <th>세부</th>
-                </tr>
-              </thead>
-              <tbody id="auditTableBody"></tbody>
-            </table>
+        <p class="empty-state" id="reportEmpty">아직 데이터가 없습니다. 대시보드에서 파일 업로드 또는 「샘플 데이터로 검토」 후 「업로드 결과로 리포트 생성」을 눌러 주세요.</p>
+        <div id="reportBody" hidden>
+          <div class="card">
+            <div class="card-h">점검 개요</div>
+            <div class="table-wrap">
+              <table>
+                <tbody id="reportOverviewBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h">검토 상태별 현황</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>상태</th><th>건수</th><th>금액 합계</th><th>비중</th></tr>
+                </thead>
+                <tbody id="reportStatusBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h">지침 조항별 적발 현황</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>지침 근거</th><th>점검 항목</th><th>건수</th><th>금액 합계</th></tr>
+                </thead>
+                <tbody id="reportRuleBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h">승인(전결) 구간 분포 — 제4조</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>건당 금액</th><th>전결권자</th><th>건수</th><th>금액 합계</th></tr>
+                </thead>
+                <tbody id="reportApproverBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h">상위 리스크 거래 Top 10</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>일시</th><th>가맹점</th><th>금액</th><th>리스크</th><th>상태</th><th>사유</th></tr>
+                </thead>
+                <tbody id="reportTopBody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
@@ -734,56 +723,6 @@
       : API_BASE
         ? API_BASE + '/api/cm/auth'
         : '';
-
-  var apiLabel = document.getElementById('apiBaseLabel');
-  var useServerEl = document.getElementById('useServer');
-
-  function readJsonResponse(res) {
-    return res.text().then(function (text) {
-      var trimmed = (text || '').trim();
-      if (!trimmed) {
-        throw new Error(
-          'HTTP ' +
-            res.status +
-            ' — 응답이 비어 있습니다. 서버·DB(Vercel DATABASE_URL)·타임아웃을 확인하세요.',
-        );
-      }
-      try {
-        return JSON.parse(trimmed);
-      } catch (parseErr) {
-        var preview =
-          trimmed.length > 280 ? trimmed.slice(0, 280) + '…' : trimmed;
-        throw new Error('HTTP ' + res.status + ' — JSON 파싱 실패: ' + preview);
-      }
-    });
-  }
-
-  if (apiLabel) {
-    apiLabel.textContent = API_BASE || '정적 배포 모드 — 브라우저 내 로컬 검토';
-  }
-  if (apiLabel && API_BASE) {
-    fetch(API_BASE + '/api/health', { credentials: 'include' })
-      .then(function (r) {
-        return readJsonResponse(r);
-      })
-      .then(function (j) {
-        if (!j || !j.database) return;
-        var store =
-          j.database === 'firestore'
-            ? 'Firebase Firestore'
-            : j.database === 'sqlite'
-              ? 'SQLite'
-              : j.database === 'postgresql'
-                ? 'PostgreSQL'
-                : j.database;
-        apiLabel.textContent = API_BASE + ' · 저장소: ' + store;
-      })
-      .catch(function () {});
-  }
-  if (useServerEl && usingStaticAuth) {
-    useServerEl.checked = false;
-    useServerEl.disabled = true;
-  }
 
   function isStaticAuthed() {
     try {
@@ -812,6 +751,15 @@
       '/login.html?return=' + encodeURIComponent(loginReturnUrl());
   }
 
+  // http 배포 모드 — 서버 세션(/me) 없으면 로그인 화면으로
+  if (!usingStaticAuth && AUTH_BASE) {
+    fetch(AUTH_BASE + '/me', { credentials: 'include' })
+      .then(function (res) {
+        if (!res.ok) redirectToLogin();
+      })
+      .catch(function () {});
+  }
+
   var btnLogout = document.getElementById('btnLogout');
   if (btnLogout) {
     if (usingStaticAuth) {
@@ -834,71 +782,17 @@
     }
   }
 
-  var AUDIT_KEY = 'cardMonitorAudit';
-  var AI_MEMO_HISTORY_KEY = 'cardMonitorAiMemoHistory';
-  var AI_MEMO_DRAFT_KEY = 'cardMonitorAiMemoDraft';
-  var POLICY_KEY = 'cardMonitorPolicies';
-  var NOTIF_KEY = 'cardMonitorNotifs';
+  // v2: 접대비 운영지침(2026.8.1) 내장 규칙 도입 — 과거 기본 정책과 분리
+  var POLICY_KEY = 'cardMonitorPolicies.v2';
   var PAGE_LABELS = {
     dashboard: '대시보드',
     monitor: '거래 모니터링',
     violation: '위반 검토',
-    ai: 'AI 리스크',
     policy: '정책 관리',
-    notify: '알림',
-    audit: '감사 로그',
+    report: '리포트',
   };
 
-  function auditLog(action, detail) {
-    try {
-      var logs = JSON.parse(localStorage.getItem(AUDIT_KEY) || '[]');
-      logs.unshift({
-        t: new Date().toISOString(),
-        action: action,
-        detail: detail || '',
-      });
-      localStorage.setItem(AUDIT_KEY, JSON.stringify(logs.slice(0, 200)));
-      renderAuditTable();
-    } catch (e) {}
-  }
-
-  function renderAuditTable() {
-    var body = document.getElementById('auditTableBody');
-    if (!body) return;
-    var logs = [];
-    try {
-      logs = JSON.parse(localStorage.getItem(AUDIT_KEY) || '[]');
-    } catch (e) {}
-    body.innerHTML = '';
-    if (!logs.length) {
-      var tr0 = document.createElement('tr');
-      var td0 = document.createElement('td');
-      td0.colSpan = 3;
-      td0.className = 'muted';
-      td0.textContent = '기록이 없습니다.';
-      tr0.appendChild(td0);
-      body.appendChild(tr0);
-      return;
-    }
-    logs.forEach(function (row) {
-      var tr = document.createElement('tr');
-      var td1 = document.createElement('td');
-      td1.className = 'tabular';
-      td1.textContent = row.t.replace('T', ' ').slice(0, 19);
-      var td2 = document.createElement('td');
-      td2.textContent = row.action;
-      var td3 = document.createElement('td');
-      td3.textContent = row.detail;
-      td3.style.fontSize = '12px';
-      tr.appendChild(td1);
-      tr.appendChild(td2);
-      tr.appendChild(td3);
-      body.appendChild(tr);
-    });
-  }
-
-  function showPage(pageId, options) {
-    options = options || {};
+  function showPage(pageId) {
     document.querySelectorAll('.page-panel').forEach(function (p) {
       p.classList.toggle('active', p.id === 'page-' + pageId);
     });
@@ -910,135 +804,25 @@
         history.replaceState(null, '', '#' + pageId);
       } catch (e) {}
     }
-    if (!options.silent) {
-      auditLog('화면 이동', PAGE_LABELS[pageId] || pageId);
-    }
     if (pageId === 'violation') refreshViolationTable();
     if (pageId === 'monitor') renderMonitorTable();
     if (pageId === 'policy') renderPolicyTable();
-    if (pageId === 'notify') renderNotifyList();
-    if (pageId === 'ai') {
-      refreshAiRiskPanel();
-      var taAiNav = document.getElementById('aiReviewerNote');
-      if (taAiNav) {
-        try {
-          taAiNav.value = localStorage.getItem(AI_MEMO_DRAFT_KEY) || '';
-        } catch (e) {}
-      }
-    }
+    if (pageId === 'report') renderReport();
     if (pageId === 'dashboard') {
       reapplyPoliciesToUploadData();
     }
   }
 
-  function renderFromApi(payload) {
-    paintUploadTable(payload.headers, payload.rows, payload.kpi);
-  }
-
-  function uploadToServer(file) {
-    var err = document.getElementById('uploadError');
-    err.hidden = true;
-    document.getElementById('uploadStatus').textContent = '서버 업로드 중…';
-    var fd = new FormData();
-    fd.append('file', file);
-    try {
-      fd.append('policies', JSON.stringify(loadPolicies()));
-    } catch (e) {
-      fd.append('policies', '[]');
-    }
-    fetch(API_BASE + '/api/import/upload', {
-      method: 'POST',
-      credentials: 'include',
-      body: fd,
-    })
-      .then(function (res) {
-        if (res.status === 401) {
-          redirectToLogin();
-          return Promise.reject(new Error('로그인이 필요합니다.'));
-        }
-        return readJsonResponse(res).then(function (data) {
-          if (!res.ok) throw new Error(data.error || res.statusText);
-          return data;
-        });
-      })
-      .then(function (data) {
-        document.getElementById('uploadStatus').textContent =
-          '배치 ID: ' +
-          data.batchId +
-          ' · ' +
-          data.kpi.total +
-          '건 저장 및 검토 완료';
-        var rows = data.rows.map(function (r) {
-          return {
-            raw: r.raw,
-            risk_score: r.risk_score,
-            review_status: r.review_status,
-            badge_class: r.badge_class,
-            row_class: r.row_class || '',
-            reason: r.reason,
-          };
-        });
-        renderFromApi({ headers: data.headers, rows: rows, kpi: data.kpi });
-      })
-      .catch(function (ex) {
-        err.textContent = '서버 업로드 실패: ' + (ex.message || String(ex));
-        err.hidden = false;
-        document.getElementById('uploadStatus').textContent = '';
-      });
-  }
-
-  function postSampleToServer() {
-    var err = document.getElementById('uploadError');
-    err.hidden = true;
-    document.getElementById('uploadStatus').textContent = '서버 샘플 적재 중…';
-    var sampleBody = {};
-    try {
-      sampleBody = { policies: loadPolicies() };
-    } catch (e) {
-      sampleBody = {};
-    }
-    fetch(API_BASE + '/api/import/sample', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sampleBody),
-    })
-      .then(function (res) {
-        if (res.status === 401) {
-          redirectToLogin();
-          return Promise.reject(new Error('로그인이 필요합니다.'));
-        }
-        return readJsonResponse(res).then(function (data) {
-          if (!res.ok) throw new Error(data.error || res.statusText);
-          return data;
-        });
-      })
-      .then(function (data) {
-        document.getElementById('uploadStatus').textContent =
-          '샘플 배치 ID: ' + data.batchId + ' · DB 저장됨';
-        var rows = data.rows.map(function (r) {
-          return {
-            raw: r.raw,
-            risk_score: r.risk_score,
-            review_status: r.review_status,
-            badge_class: r.badge_class,
-            row_class: r.row_class || '',
-            reason: r.reason,
-          };
-        });
-        renderFromApi({ headers: data.headers, rows: rows, kpi: data.kpi });
-      })
-      .catch(function (ex) {
-        err.textContent = '서버 샘플 실패: ' + (ex.message || String(ex));
-        err.hidden = false;
-        document.getElementById('uploadStatus').textContent = '';
-      });
-  }
-
   var AMOUNT_KEYS = ['금액', '이용금액', '결제금액', '승인금액', '공급가액', 'amount', 'amt', 'payment', 'total'];
   var DATE_KEYS = ['일시', '거래일시', '승인일', '승인일시', '이용일', '거래일자', '날짜', 'date', 'datetime', 'time'];
   var MERCHANT_KEYS = ['가맹점', '가맹점명', '상호', 'merchant', 'store', '가맹점명칭'];
-  var SENSITIVE = ['유흥', '룸싸롱', '룸', '호텔', '모텔', '주점', '술집', 'BAR', 'CASINO', '노래방', '안마'];
+  // 접대비 운영지침(2026.8.1) 키워드 — lib/card-monitor/reviewEngine.ts 와 동일하게 유지
+  var BANNED_KEYWORDS = ['유흥', '룸싸롱', '룸살롱', '단란주점', '노래방', '가라오케', '클럽', 'CLUB', 'CASINO', '카지노', '안마', '마사지', 'BAR'];
+  var CAUTION_KEYWORDS = ['주점', '술집', '호텔', '모텔', '포차', '와인바'];
+  var GOLF_KEYWORDS = ['골프', '컨트리클럽', 'GOLF', 'C.C'];
+  var CONDOLENCE_KEYWORDS = ['화환', '경조', '부의', '조의', '축의', '장례', '상조', '플라워'];
+  // 택시·카페 등 동일일 다건 결제가 정상인 가맹점 — 분할 결제 의심(제8조 5호)에서 제외
+  var SPLIT_EXEMPT_KEYWORDS = ['티머니모빌리티', '에스씨케이컴퍼니'];
 
   function norm(s) {
     return String(s == null ? '' : s).replace(/\s/g, '').toLowerCase();
@@ -1189,7 +973,6 @@
     var rows = getRowsForUploadTable();
     var kpi = computeKpiFromRows(rows);
     paintUploadTable(f.headers, rows, kpi, { displayOnly: true });
-    refreshAiRiskPanel();
   }
 
   /** 정책(localStorage) 변경 후 이미 올려둔 업로드 결과에 동일 규칙으로 재검토 */
@@ -1198,14 +981,20 @@
     if (!f || !f.headers || !f.rows || !f.rows.length) return;
     var hdrs = f.headers;
     var cm = mapHeaders(hdrs);
-    var newRows = f.rows.map(function (row) {
+    var mapped = f.rows.map(function (row) {
       var raw = row.raw || {};
-      var amount = cm.idxAmount >= 0 ? parseAmount(raw[hdrs[cm.idxAmount]]) : 0;
-      var merchant = cm.idxMerchant >= 0 ? String(raw[hdrs[cm.idxMerchant]] ?? '') : '';
-      var dateVal = cm.idxDate >= 0 ? raw[hdrs[cm.idxDate]] : '';
-      var ev = autoReview({ _amount: amount, _merchant: merchant, _date: dateVal });
       return {
         raw: raw,
+        _amount: cm.idxAmount >= 0 ? parseAmount(raw[hdrs[cm.idxAmount]]) : 0,
+        _merchant: cm.idxMerchant >= 0 ? String(raw[hdrs[cm.idxMerchant]] ?? '') : '',
+        _date: cm.idxDate >= 0 ? raw[hdrs[cm.idxDate]] : '',
+      };
+    });
+    var extras = buildCrossRowExtras(mapped);
+    var newRows = mapped.map(function (row, i) {
+      var ev = autoReview(row, extras[i]);
+      return {
+        raw: row.raw,
         risk_score: ev.risk,
         review_status: ev.status,
         badge_class: ev.badge,
@@ -1291,6 +1080,41 @@
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '검토결과');
     XLSX.writeFile(wb, '법인카드_검토결과_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+  }
+
+  function violationRows() {
+    var s = window.__uploadState;
+    if (!s || !s.rows || !s.rows.length) return null;
+    var rows = s.rows.filter(function (r) {
+      var st = r.review_status;
+      return st === '위반 의심' || st === '의심' || st === '검토 대기';
+    });
+    return rows.length ? { headers: s.headers, rows: rows } : null;
+  }
+
+  function downloadViolationsAsXlsx() {
+    if (typeof XLSX === 'undefined') {
+      alert('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결 후 새로고침해 주세요.');
+      return;
+    }
+    var v = violationRows();
+    if (!v) {
+      alert('다운로드할 검토 대상이 없습니다. 대시보드에서 업로드·샘플 검토 후 이용하세요.');
+      return;
+    }
+    var headers = v.headers.slice();
+    var aoa = [headers.concat(REVIEW_HEADERS)];
+    v.rows.forEach(function (row) {
+      var line = headers.map(function (h) {
+        return row.raw[h];
+      });
+      line.push(row.risk_score, row.review_status, row.reason);
+      aoa.push(line);
+    });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '위반검토');
+    XLSX.writeFile(wb, '법인카드_위반검토_' + new Date().toISOString().slice(0, 10) + '.xlsx');
   }
 
   var _uploadSearchDebounce = null;
@@ -1486,9 +1310,6 @@
           '전체 ' + base + '건 중 ' + rows.length + '건 표시(필터 적용)';
     }
 
-    if (!displayOnly) {
-      refreshAiRiskPanel();
-    }
   }
 
   function parseAmount(v) {
@@ -1499,24 +1320,65 @@
     return isNaN(n) ? 0 : n;
   }
 
-  function autoReview(row) {
+  function findKeyword(merchant, list) {
+    var mu = merchant.toUpperCase();
+    for (var i = 0; i < list.length; i++) {
+      var w = list[i];
+      if (merchant.indexOf(w) !== -1 || mu.indexOf(w.toUpperCase()) !== -1) return w;
+    }
+    return null;
+  }
+
+  // 제4조 — 건당 금액별 승인(전결)권자
+  function approverFor(amount) {
+    if (amount > 5000000) return '대표이사';
+    if (amount > 3000000) return '본부장';
+    if (amount > 1000000) return '국장';
+    return '팀장';
+  }
+
+  function autoReview(row, extra) {
     var amount = row._amount || 0;
     var merchant = String(row._merchant || '');
-    var risk = 8;
+    var risk = 5;
     var flags = [];
 
-    if (amount >= 1000000) { risk += 45; flags.push('고액(100만원 이상)'); }
-    else if (amount >= 500000) { risk += 32; flags.push('고액(50만원 이상)'); }
-    else if (amount >= 200000) { risk += 18; flags.push('중고액(20만원 이상)'); }
-
-    var mu = merchant.toUpperCase();
-    for (var i = 0; i < SENSITIVE.length; i++) {
-      var w = SENSITIVE[i];
-      if (merchant.indexOf(w) !== -1 || mu.indexOf(w.toUpperCase()) !== -1) {
-        risk += 28;
-        flags.push('금지/주의 업종 키워드: ' + w);
-        break;
+    // 골프장은 허용 업종(제8조 7호) — 「컨트리클럽」이 금지 키워드 「클럽」에 걸리지 않도록 먼저 판정
+    if (findKeyword(merchant, GOLF_KEYWORDS)) {
+      risk += 18;
+      flags.push('골프장 지출 — 접대비 분류(제3조)·참석자/목적 증빙 확인');
+    } else {
+      var banned = findKeyword(merchant, BANNED_KEYWORDS);
+      if (banned) {
+        risk += 70;
+        flags.push('유흥성 업종 의심 「' + banned + '」 — 제8조 금지(업무상 필요 시 본부장 보고)');
+      } else {
+        var caution = findKeyword(merchant, CAUTION_KEYWORDS);
+        if (caution) {
+          risk += 22;
+          flags.push('접대성 업종 주의 「' + caution + '」 — 접대비 분류·증빙 확인(제3조)');
+        }
       }
+    }
+
+    if (findKeyword(merchant, CONDOLENCE_KEYWORDS)) {
+      risk += 12;
+      flags.push('거래처 경조사비(제7조) — 청탁금지법 한도·팀 단위 1회·SBS 계열 지출 금지 확인');
+    }
+
+    if (amount >= 300000) {
+      risk += 10;
+      flags.push('접대비 분류 대상 — 건당 30만원 이상(제3조)');
+    }
+    if (amount > 5000000) {
+      risk += 30;
+      flags.push('대표이사 전결 대상 — 500만원 초과(제4조)');
+    } else if (amount > 3000000) {
+      risk += 20;
+      flags.push('본부장 전결 대상 — 300만원 초과(제4조)');
+    } else if (amount > 1000000) {
+      risk += 12;
+      flags.push('국장 전결 대상 — 100만원 초과(제4조)');
     }
 
     var plist = loadPolicies();
@@ -1525,6 +1387,11 @@
         risk += 18;
         flags.push('정책: ' + plist[pi].name);
       }
+    }
+
+    if (extra && extra.flags && extra.flags.length) {
+      flags = flags.concat(extra.flags);
+      risk += extra.risk || 0;
     }
 
     risk = Math.min(99, Math.round(risk));
@@ -1539,9 +1406,53 @@
     } else {
       status = '정상'; badge = 'badge-approved'; rowClass = '';
     }
-    reason = flags.length ? flags.join(' · ') : '자동 규칙 미충족(정상 구간)';
+    reason = flags.length ? flags.join(' · ') : '지침 자동점검 통과 — 접대비 운영지침(2026.8.1)';
 
     return { risk: risk, status: status, badge: badge, rowClass: rowClass, reason: reason };
+  }
+
+  // 일자 키(YYYY-MM-DD) — 분할·중복 결제(제8조) 판정용
+  function dayKeyOf(v) {
+    if (v == null || v === '') return '';
+    if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
+      return v.toISOString().slice(0, 10);
+    }
+    if (typeof v === 'number' && !isNaN(v)) return String(Math.floor(v));
+    var s = String(v).trim();
+    var m = s.match(/\d{4}[-./]\d{1,2}[-./]\d{1,2}/);
+    if (m) return m[0].replace(/[./]/g, '-');
+    return s.split(/[\sT]/)[0] || s;
+  }
+
+  // 제8조 4·5호 — 행 전체를 보고 행별 추가 플래그(분할·중복 의심)를 계산
+  function buildCrossRowExtras(rows) {
+    var groupCount = {};
+    var dupCount = {};
+    var keys = rows.map(function (row) {
+      var day = dayKeyOf(row._date);
+      var merchant = norm(row._merchant);
+      var g = day && merchant ? day + '|' + merchant : '';
+      var d = g ? g + '|' + (row._amount || 0) : '';
+      if (g) groupCount[g] = (groupCount[g] || 0) + 1;
+      if (d) dupCount[d] = (dupCount[d] || 0) + 1;
+      return { g: g, d: d };
+    });
+    return keys.map(function (k, i) {
+      var flags = [];
+      var risk = 0;
+      var splitExempt = !!findKeyword(String(rows[i]._merchant || ''), SPLIT_EXEMPT_KEYWORDS);
+      var gc = k.g ? groupCount[k.g] || 0 : 0;
+      var dc = k.d ? dupCount[k.d] || 0 : 0;
+      if (gc >= 2 && !splitExempt) {
+        risk += 28;
+        flags.push('분할 결제 의심 — 동일일 동일 가맹점 ' + gc + '건(제8조 5호)');
+      }
+      if (dc >= 2) {
+        risk += 15;
+        flags.push('동일 건 중복 의심 — 일시·가맹점·금액 일치(제8조 4호)');
+      }
+      return { flags: flags, risk: risk };
+    });
   }
 
   function mapHeaders(headers) {
@@ -1586,8 +1497,9 @@
   function renderTable(objects, displayHeaders) {
     var pending = 0, viol = 0, ok = 0;
     var savedRows = [];
-    objects.forEach(function (o) {
-      var ev = autoReview(o);
+    var extras = buildCrossRowExtras(objects);
+    objects.forEach(function (o, i) {
+      var ev = autoReview(o, extras[i]);
       if (ev.status === '위반 의심') viol++;
       else if (ev.status === '정상') ok++;
       else pending++;
@@ -1659,12 +1571,6 @@
   document.getElementById('fileInput').addEventListener('change', function (e) {
     var f = e.target.files && e.target.files[0];
     if (!f) return;
-    var useServer = useServerEl && useServerEl.checked && API_BASE;
-    if (useServer) {
-      uploadToServer(f);
-      e.target.value = '';
-      return;
-    }
     if (/\.csv$/i.test(f.name)) {
       var r = new FileReader();
       r.onload = function () { handleCsvText(r.result, f.name); };
@@ -1689,11 +1595,6 @@
     dropZone.style.borderColor = '';
     var f = e.dataTransfer.files[0];
     if (!f) return;
-    var useServer = useServerEl && useServerEl.checked && API_BASE;
-    if (useServer) {
-      uploadToServer(f);
-      return;
-    }
     if (/\.csv$/i.test(f.name)) {
       var r = new FileReader();
       r.onload = function () { handleCsvText(r.result, f.name); };
@@ -1705,18 +1606,18 @@
   });
 
   function runSampleReview() {
-    if (useServerEl && useServerEl.checked && API_BASE) {
-      postSampleToServer();
-      return;
-    }
     if (typeof XLSX === 'undefined') return;
     var ws = XLSX.utils.aoa_to_sheet([
       ['거래일시', '가맹점명', '이용금액', '비고'],
-      ['2025-03-26 12:30', '○○식당', 35000, ''],
-      ['2025-03-26 14:00', '△△유흥주점', 120000, ''],
-      ['2025-03-25 09:00', '□□전자', 1250000, '고액'],
-      ['2025-03-24 18:00', '◇◇마트', 89000, ''],
-      ['2025-03-23 22:00', 'Night BAR Seoul', 450000, '']
+      ['2026-08-03 12:30', '○○식당', 85000, '팀 오찬'],
+      ['2026-08-03 19:20', '△△유흥주점', 480000, ''],
+      ['2026-08-04 11:00', '레이크힐스 컨트리클럽', 620000, '거래처 골프'],
+      ['2026-08-05 10:00', '축하화환 플라워몰', 150000, '거래처 경조사'],
+      ['2026-08-06 18:40', '한우명가 강남점', 980000, '광고주 접대'],
+      ['2026-08-06 21:05', '한우명가 강남점', 950000, '분할 의심'],
+      ['2026-08-07 12:00', '□□호텔 레스토랑', 5400000, '행사 접대'],
+      ['2026-08-08 12:30', '◇◇마트', 89000, ''],
+      ['2026-08-08 12:30', '◇◇마트', 89000, '중복 의심']
     ]);
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '거래내역');
@@ -1761,10 +1662,7 @@
 
   function syncMonitorFromUpload() {
     var s = window.__uploadState;
-    if (!s || !s.rows.length) {
-      auditLog('거래 모니터링', '불러올 업로드 데이터가 없습니다');
-      return;
-    }
+    if (!s || !s.rows.length) return;
     monitorRows = s.rows.map(function (r) {
       var raw = r.raw || {};
       return {
@@ -1778,7 +1676,6 @@
       };
     });
     renderMonitorTable();
-    auditLog('거래 모니터링', '업로드 데이터 ' + monitorRows.length + '건 반영');
   }
 
   function refreshViolationTable() {
@@ -1830,185 +1727,8 @@
       tdY.className = 'reason-cell';
       tdY.textContent = r.reason || '';
       tr.appendChild(tdY);
-      var tdA = document.createElement('td');
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn';
-      btn.textContent = '조치 기록';
-      (function (reason, merchant) {
-        btn.addEventListener('click', function () {
-          auditLog('위반 검토 조치', merchant + ' — ' + reason);
-        });
-      })(r.reason, pickCol(raw, s.headers, MERCHANT_KEYS));
-      tdA.appendChild(btn);
-      tr.appendChild(tdA);
       body.appendChild(tr);
     });
-  }
-
-  var AI_SCENARIOS = [
-    { text: '동일 사용자의 주중 점심 시간대 대비 금액이 상위 5%이며, 최근 14일 유사 업종 거래 빈도가 증가했습니다. 규칙 R-금지시간대는 미충족입니다.', conf: '중간 (62%)' },
-    { text: '야간 시간대 집중 사용과 고액 승인이 겹쳤습니다. 동일 가맹점군에서 반복 패턴이 감지되어 리스크 점수가 상승했습니다.', conf: '높음 (71%)' },
-    { text: '평소 대비 거래 간격이 짧고 금액 분산이 낮습니다. 팀 단위 규정(1일 1회 한도) 가능성을 검토하세요.', conf: '중간 (55%)' },
-    { text: '가맹점 카테고리가 정책 화이트리스트와 불일치합니다. 수기 영수증 확인을 권장합니다.', conf: '낮음 (48%)' },
-  ];
-  var aiScenarioIdx = 0;
-  var aiVariantIdx = 0;
-  var lastAiSummaryText = '';
-
-  function aiEscapeHtml(s) {
-    var d = document.createElement('div');
-    d.textContent = s == null ? '' : String(s);
-    return d.innerHTML;
-  }
-
-  function buildDataDrivenAiSummary(rows, headers, variantIdx) {
-    if (!rows || !rows.length) {
-      return {
-        text:
-          '분석할 거래가 없습니다. 대시보드에서 파일을 업로드하거나 「샘플 데이터로 검토」를 실행한 뒤, 「업로드 데이터로 요약 갱신」을 눌러 주세요.',
-        confDisplay: '—',
-      };
-    }
-    var v = (variantIdx || 0) % 3;
-    var kpi = computeKpiFromRows(rows);
-    var risks = rows.map(function (r) {
-      return Number(r.risk_score) || 0;
-    });
-    var maxR = Math.max.apply(null, risks);
-    var minR = Math.min.apply(null, risks);
-    var sum = risks.reduce(function (a, b) {
-      return a + b;
-    }, 0);
-    var avgR = Math.round(sum / risks.length);
-    var topRows = rows
-      .slice()
-      .sort(function (a, b) {
-        return (Number(b.risk_score) || 0) - (Number(a.risk_score) || 0);
-      })
-      .slice(0, 3);
-    var mer = function (r) {
-      return pickCol(r.raw || {}, headers, MERCHANT_KEYS);
-    };
-    var names = [];
-    topRows.forEach(function (r) {
-      var m = mer(r);
-      if (m && m !== '—') names.push(m + '(' + r.risk_score + ')');
-    });
-    var pctViol = rows.length ? Math.round((kpi.violation / rows.length) * 100) : 0;
-    var threshold = Math.max(1, Math.ceil(maxR * 0.85));
-    var parts = [];
-    parts.push(
-      '현재 요약은 대시보드 「업로드 거래」와 같은 범위입니다(필터 적용 시 그에 맞는 부분집합 ' +
-        rows.length +
-        '건).'
-    );
-    parts.push(
-      '상태 분포: 정상 ' +
-        kpi.ok +
-        '건, 위반 의심 ' +
-        kpi.violation +
-        '건, 그 외 검토·의심 ' +
-        kpi.reviewPending +
-        '건.'
-    );
-    parts.push('리스크 점수: 평균 ' + avgR + ', 최고 ' + maxR + ', 최저 ' + minR + '.');
-    if (names.length) {
-      parts.push('리스크 상위(가맹점·점수): ' + names.join(', ') + '.');
-    }
-    if (v === 0) {
-      parts.push(
-        '가이드: 위반 의심 비중은 약 ' +
-          pctViol +
-          '%입니다. 자동검토사유 열에서 반복 키워드를 보고 정책(고액·업종)을 조정할 수 있습니다.'
-      );
-    } else if (v === 1) {
-      parts.push(
-        '점검 권장: 점수 ' +
-          threshold +
-          ' 이상 건은 영수증·용도를 우선 확인하세요. 「위반 검토」에서 조치를 남기면 감사 로그와 연결됩니다.'
-      );
-    } else {
-      parts.push(
-        '참고: 본 패널은 규칙 엔진·통계 요약입니다. LLM 연동 시 이 문단을 모델 응답으로 교체하면 됩니다.'
-      );
-    }
-    var confNum = Math.min(
-      90,
-      Math.max(52, 58 + Math.min(22, kpi.violation * 4 + Math.round(maxR / 10)))
-    );
-    var confDisplay =
-      confNum >= 78
-        ? '높음 (' + confNum + '%)'
-        : confNum >= 64
-          ? '중간 (' + confNum + '%)'
-          : '보통 (' + confNum + '%)';
-    return { text: parts.join(' '), confDisplay: confDisplay };
-  }
-
-  function renderAiMemoHistory() {
-    var wrap = document.getElementById('aiMemoHistoryWrap');
-    var list = document.getElementById('aiMemoHistoryList');
-    if (!list || !wrap) return;
-    var items = [];
-    try {
-      items = JSON.parse(localStorage.getItem(AI_MEMO_HISTORY_KEY) || '[]');
-    } catch (e) {}
-    list.innerHTML = '';
-    if (!items.length) {
-      wrap.hidden = true;
-      return;
-    }
-    wrap.hidden = false;
-    items.slice(0, 8).forEach(function (it) {
-      var li = document.createElement('li');
-      li.style.marginBottom = '8px';
-      var note = it.note || '';
-      li.innerHTML =
-        '<span class="tabular">' +
-        String(it.t || '').replace('T', ' ').slice(0, 19) +
-        '</span> — ' +
-        aiEscapeHtml(note.slice(0, 220)) +
-        (note.length > 220 ? '…' : '');
-      list.appendChild(li);
-    });
-  }
-
-  function refreshAiRiskPanel() {
-    var f = window.__uploadFull;
-    var hasData = f && f.rows && f.rows.length;
-    var txtEl = document.getElementById('aiSummaryText');
-    var confEl = document.getElementById('aiConfidenceText');
-    var tag = document.getElementById('aiModelTag');
-    var ctx = document.getElementById('aiDataContext');
-
-    if (hasData) {
-      var rows = getRowsForUploadTable();
-      var payload = buildDataDrivenAiSummary(rows, f.headers, aiVariantIdx);
-      if (txtEl) txtEl.textContent = payload.text;
-      if (confEl) confEl.textContent = payload.confDisplay;
-      lastAiSummaryText = payload.text;
-      if (tag) tag.textContent = '(규칙·통계 기반 — 업로드 데이터 연동)';
-      if (ctx) {
-        ctx.textContent =
-          '연결: 전체 ' +
-          f.rows.length +
-          '건 · 분석·표시 범위 ' +
-          rows.length +
-          '건(대시보드 필터와 동일)';
-      }
-    } else {
-      var sc = AI_SCENARIOS[aiScenarioIdx % AI_SCENARIOS.length];
-      if (txtEl) txtEl.textContent = sc.text;
-      if (confEl) confEl.textContent = sc.conf;
-      lastAiSummaryText = sc.text;
-      if (tag) tag.textContent = '(예시 시나리오 — 업로드 시 실데이터 요약으로 바뀜)';
-      if (ctx) {
-        ctx.textContent =
-          '연결된 거래 없음 · 아래 문단은 참고용 예시입니다. 데이터 업로드 후 「요약 갱신」을 사용하세요.';
-      }
-    }
-    renderAiMemoHistory();
   }
 
   function normalizePolicy(p) {
@@ -2098,33 +1818,9 @@
     return b + ' 이전';
   }
 
+  // 지침(2026.8.1) 규칙은 autoReview 에 내장 — 기본 추가 정책은 없음
   function defaultPolicies() {
-    return [
-      {
-        id: 'p1',
-        name: '고액 100만 이상',
-        keyword: '',
-        amountMin: 1000000,
-        timeStart: '',
-        timeEnd: '',
-      },
-      {
-        id: 'p2',
-        name: '유흥 키워드',
-        keyword: '유흥',
-        amountMin: 0,
-        timeStart: '',
-        timeEnd: '',
-      },
-      {
-        id: 'p3',
-        name: '주말 야간',
-        keyword: 'BAR',
-        amountMin: 300000,
-        timeStart: '',
-        timeEnd: '',
-      },
-    ];
+    return [];
   }
 
   function loadPolicies() {
@@ -2132,7 +1828,7 @@
       var raw = localStorage.getItem(POLICY_KEY);
       if (!raw) return defaultPolicies();
       var arr = JSON.parse(raw);
-      return Array.isArray(arr) && arr.length ? arr.map(normalizePolicy) : defaultPolicies();
+      return Array.isArray(arr) ? arr.map(normalizePolicy) : defaultPolicies();
     } catch (e) {
       return defaultPolicies();
     }
@@ -2168,7 +1864,6 @@
         savePolicies(next);
         renderPolicyTable();
         reapplyPoliciesToUploadData();
-        auditLog('정책 삭제', row.name);
       });
       tdDel.appendChild(btn);
       tr.appendChild(tdDel);
@@ -2176,58 +1871,250 @@
     });
   }
 
-  function ensureNotifs() {
-    var raw = localStorage.getItem(NOTIF_KEY);
-    if (raw) {
-      try {
-        return JSON.parse(raw);
-      } catch (e) {}
+  // ── 접대비 점검 리포트 ──────────────────────────────────────────────
+  function fmtWon(n) {
+    return Math.round(n).toLocaleString('ko-KR') + '원';
+  }
+
+  var REPORT_RULES = [
+    { key: '유흥성 업종 의심', basis: '제8조 예시', label: '유흥성 업종 집행 금지' },
+    { key: '분할 결제 의심', basis: '제8조 5호', label: '동일 가맹점 분할 결제 금지' },
+    { key: '동일 건 중복 의심', basis: '제8조 4호', label: '동일 건 중복 신청 금지' },
+    { key: '거래처 경조사비', basis: '제7조', label: '경조사비 한도·횟수 확인' },
+    { key: '골프장 지출', basis: '제3조', label: '골프 접대 — 분류·증빙 확인' },
+    { key: '접대성 업종 주의', basis: '제3조', label: '접대성 업종 분류 확인' },
+    { key: '접대비 분류 대상', basis: '제3조 2호', label: '건당 30만원 이상 접대비 분류' },
+    { key: '전결 대상', basis: '제4조', label: '상위 전결(100만원 초과) 대상' },
+    { key: '정책: ', basis: '추가 정책', label: '사용자 정의 정책 적발' },
+  ];
+
+  function buildReportData() {
+    var f = window.__uploadFull;
+    if (!f || !f.rows || !f.rows.length) return null;
+    var hdrs = f.headers;
+    var cm = mapHeaders(hdrs);
+    var rows = f.rows.map(function (r) {
+      var raw = r.raw || {};
+      return {
+        date: cm.idxDate >= 0 ? String(raw[hdrs[cm.idxDate]] ?? '') : '',
+        merchant: cm.idxMerchant >= 0 ? String(raw[hdrs[cm.idxMerchant]] ?? '') : '',
+        amount: cm.idxAmount >= 0 ? parseAmount(raw[hdrs[cm.idxAmount]]) : 0,
+        risk: r.risk_score,
+        status: r.review_status,
+        badge: r.badge_class,
+        reason: r.reason || '',
+      };
+    });
+
+    var totalAmount = 0;
+    var byStatus = {};
+    var days = [];
+    rows.forEach(function (r) {
+      totalAmount += r.amount;
+      if (!byStatus[r.status]) byStatus[r.status] = { count: 0, amount: 0 };
+      byStatus[r.status].count++;
+      byStatus[r.status].amount += r.amount;
+      var d = dayKeyOf(r.date);
+      if (d) days.push(d);
+    });
+    days.sort();
+
+    var ruleHits = REPORT_RULES.map(function (rule) {
+      var count = 0, amount = 0;
+      rows.forEach(function (r) {
+        if (r.reason.indexOf(rule.key) !== -1) {
+          count++;
+          amount += r.amount;
+        }
+      });
+      return { basis: rule.basis, label: rule.label, count: count, amount: amount };
+    }).filter(function (x) { return x.count > 0; });
+
+    var brackets = [
+      { label: '100만원 이하', approver: '팀장', min: -Infinity, max: 1000000 },
+      { label: '100만원 초과 ~ 300만원', approver: '국장', min: 1000000, max: 3000000 },
+      { label: '300만원 초과 ~ 500만원', approver: '본부장', min: 3000000, max: 5000000 },
+      { label: '500만원 초과', approver: '대표이사', min: 5000000, max: Infinity },
+    ].map(function (b) {
+      var count = 0, amount = 0;
+      rows.forEach(function (r) {
+        if (r.amount > b.min && r.amount <= b.max) {
+          count++;
+          amount += r.amount;
+        }
+      });
+      return { label: b.label, approver: b.approver, count: count, amount: amount };
+    });
+
+    var top = rows.slice().sort(function (a, b) { return b.risk - a.risk; }).slice(0, 10);
+
+    return {
+      total: rows.length,
+      totalAmount: totalAmount,
+      periodStart: days[0] || '—',
+      periodEnd: days[days.length - 1] || '—',
+      byStatus: byStatus,
+      ruleHits: ruleHits,
+      brackets: brackets,
+      top: top,
+    };
+  }
+
+  var REPORT_STATUS_ORDER = ['위반 의심', '검토 대기', '의심', '정상'];
+
+  function renderReport() {
+    var empty = document.getElementById('reportEmpty');
+    var bodyWrap = document.getElementById('reportBody');
+    var statusEl = document.getElementById('reportStatus');
+    if (!bodyWrap) return;
+    var data = buildReportData();
+    if (!data) {
+      if (empty) empty.hidden = false;
+      bodyWrap.hidden = true;
+      if (statusEl) statusEl.textContent = '';
+      return;
     }
-    var initial = [
-      { id: 'n1', title: '검토 대기 5건', body: '어제 업로드 배치에 검토 대기 건이 있습니다.', unread: true },
-      { id: 'n2', title: '정책 변경 안내', body: '고액 임계값이 갱신되었습니다. 정책 관리에서 확인하세요.', unread: true },
-      { id: 'n3', title: '시스템', body: '로컬 프로토타입 모드입니다.', unread: false },
-    ];
-    localStorage.setItem(NOTIF_KEY, JSON.stringify(initial));
-    return initial;
-  }
+    if (empty) empty.hidden = true;
+    bodyWrap.hidden = false;
+    if (statusEl) statusEl.textContent = '생성: ' + new Date().toLocaleString('ko-KR');
 
-  function saveNotifs(list) {
-    localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
-  }
+    var ov = document.getElementById('reportOverviewBody');
+    ov.innerHTML = '';
+    [
+      ['기준 지침', '접대비 운영지침 (2026.8.1 시행)'],
+      ['대상 기간', data.periodStart + ' ~ ' + data.periodEnd],
+      ['총 거래', data.total + '건 · ' + fmtWon(data.totalAmount)],
+      ['자동 점검', '유흥·골프·경조사 업종 감지 · 30만원 접대비 분류(제3조) · 전결 구간(제4조) · 분할·중복 결제(제8조)'],
+    ].forEach(function (pair) {
+      var tr = document.createElement('tr');
+      var th = document.createElement('th');
+      th.textContent = pair[0];
+      th.style.width = '140px';
+      th.style.textAlign = 'left';
+      var td = document.createElement('td');
+      td.textContent = pair[1];
+      tr.appendChild(th);
+      tr.appendChild(td);
+      ov.appendChild(tr);
+    });
 
-  function renderNotifyList() {
-    var host = document.getElementById('notifyList');
-    if (!host) return;
-    host.innerHTML = '';
-    ensureNotifs().forEach(function (n) {
-      var row = document.createElement('div');
-      row.className = 'notify-item' + (n.unread ? ' unread' : '');
-      var txt = document.createElement('div');
-      txt.innerHTML = '<strong>' + n.title + '</strong><p class="muted" style="margin:8px 0 0;font-size:13px">' + n.body + '</p>';
-      var markBtn = document.createElement('button');
-      markBtn.type = 'button';
-      markBtn.className = 'btn';
-      markBtn.textContent = n.unread ? '읽음' : '읽음 처리됨';
-      markBtn.disabled = !n.unread;
-      if (n.unread) {
-        (function (id) {
-          markBtn.addEventListener('click', function () {
-            var list = ensureNotifs().map(function (x) {
-              if (x.id === id) return Object.assign({}, x, { unread: false });
-              return x;
-            });
-            saveNotifs(list);
-            auditLog('알림 읽음', id);
-            renderNotifyList();
-          });
-        })(n.id);
-      }
-      row.appendChild(txt);
-      row.appendChild(markBtn);
-      host.appendChild(row);
+    var st = document.getElementById('reportStatusBody');
+    st.innerHTML = '';
+    REPORT_STATUS_ORDER.forEach(function (name) {
+      var v = data.byStatus[name];
+      if (!v) return;
+      var tr = document.createElement('tr');
+      [name, v.count + '건', fmtWon(v.amount), Math.round((v.count / data.total) * 100) + '%'].forEach(function (text, i) {
+        var td = document.createElement('td');
+        if (i > 0) td.className = 'tabular';
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      st.appendChild(tr);
+    });
+
+    var ru = document.getElementById('reportRuleBody');
+    ru.innerHTML = '';
+    if (!data.ruleHits.length) {
+      var trR = document.createElement('tr');
+      var tdR = document.createElement('td');
+      tdR.colSpan = 4;
+      tdR.className = 'muted';
+      tdR.textContent = '지침 위반·확인 대상이 없습니다.';
+      trR.appendChild(tdR);
+      ru.appendChild(trR);
+    }
+    data.ruleHits.forEach(function (r) {
+      var tr = document.createElement('tr');
+      [r.basis, r.label, r.count + '건', fmtWon(r.amount)].forEach(function (text, i) {
+        var td = document.createElement('td');
+        if (i >= 2) td.className = 'tabular';
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      ru.appendChild(tr);
+    });
+
+    var ap = document.getElementById('reportApproverBody');
+    ap.innerHTML = '';
+    data.brackets.forEach(function (b) {
+      var tr = document.createElement('tr');
+      [b.label, b.approver, b.count + '건', fmtWon(b.amount)].forEach(function (text, i) {
+        var td = document.createElement('td');
+        if (i >= 2) td.className = 'tabular';
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      ap.appendChild(tr);
+    });
+
+    var tp = document.getElementById('reportTopBody');
+    tp.innerHTML = '';
+    data.top.forEach(function (r) {
+      var tr = document.createElement('tr');
+      var cells = [r.date, r.merchant, fmtWon(r.amount), String(r.risk)];
+      cells.forEach(function (text, i) {
+        var td = document.createElement('td');
+        if (i === 2 || i === 3) td.className = 'tabular';
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      var tdS = document.createElement('td');
+      tdS.innerHTML = '<span class="badge ' + r.badge + '">' + r.status + '</span>';
+      tr.appendChild(tdS);
+      var tdY = document.createElement('td');
+      tdY.className = 'reason-cell';
+      tdY.textContent = r.reason;
+      tr.appendChild(tdY);
+      tp.appendChild(tr);
     });
   }
+
+  function downloadReportCsv() {
+    var data = buildReportData();
+    if (!data) return;
+    var lines = [];
+    lines.push(['접대비 점검 리포트', '접대비 운영지침(2026.8.1)'].map(escapeCsvField).join(','));
+    lines.push(['대상 기간', data.periodStart + ' ~ ' + data.periodEnd].map(escapeCsvField).join(','));
+    lines.push(['총 거래', data.total + '건', String(data.totalAmount)].map(escapeCsvField).join(','));
+    lines.push('');
+    lines.push(['상태', '건수', '금액'].join(','));
+    REPORT_STATUS_ORDER.forEach(function (name) {
+      var v = data.byStatus[name];
+      if (v) lines.push([name, v.count, v.amount].map(escapeCsvField).join(','));
+    });
+    lines.push('');
+    lines.push(['지침 근거', '점검 항목', '건수', '금액'].join(','));
+    data.ruleHits.forEach(function (r) {
+      lines.push([r.basis, r.label, r.count, r.amount].map(escapeCsvField).join(','));
+    });
+    lines.push('');
+    lines.push(['전결 구간', '전결권자', '건수', '금액'].join(','));
+    data.brackets.forEach(function (b) {
+      lines.push([b.label, b.approver, b.count, b.amount].map(escapeCsvField).join(','));
+    });
+    var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '접대비점검리포트.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 0);
+  }
+
+  var btnReportBuild = document.getElementById('btnReportBuild');
+  if (btnReportBuild) btnReportBuild.addEventListener('click', renderReport);
+  var btnReportPrint = document.getElementById('btnReportPrint');
+  if (btnReportPrint)
+    btnReportPrint.addEventListener('click', function () {
+      renderReport();
+      window.print();
+    });
+  var btnReportCsv = document.getElementById('btnReportCsv');
+  if (btnReportCsv) btnReportCsv.addEventListener('click', downloadReportCsv);
 
   document.getElementById('btnPolicyAdd').addEventListener('click', function () {
     var nameEl = document.getElementById('policyName');
@@ -2236,10 +2123,7 @@
     var tStartEl = document.getElementById('policyTimeStart');
     var tEndEl = document.getElementById('policyTimeEnd');
     var name = (nameEl && nameEl.value) || '';
-    if (!name.trim()) {
-      auditLog('정책', '이름이 비었습니다');
-      return;
-    }
+    if (!name.trim()) return;
     var list = loadPolicies();
     list.push(
       normalizePolicy({
@@ -2259,70 +2143,15 @@
     if (tEndEl) tEndEl.value = '';
     renderPolicyTable();
     reapplyPoliciesToUploadData();
-    auditLog('정책 추가', name.trim());
   });
 
-  document.getElementById('btnAiRefreshData').addEventListener('click', function () {
-    aiVariantIdx = 0;
-    refreshAiRiskPanel();
-    auditLog('AI 리스크', '업로드 데이터로 요약 갱신');
-  });
-
-  document.getElementById('btnAiRegenerate').addEventListener('click', function () {
-    if (window.__uploadFull && window.__uploadFull.rows.length) {
-      aiVariantIdx = (aiVariantIdx + 1) % 3;
-      refreshAiRiskPanel();
-      auditLog('AI 리스크', '데이터 요약 각도 ' + (aiVariantIdx + 1) + '/3');
-    } else {
-      aiScenarioIdx = (aiScenarioIdx + 1) % AI_SCENARIOS.length;
-      refreshAiRiskPanel();
-      auditLog('AI 리스크', '예시 시나리오 ' + (aiScenarioIdx + 1) + '/' + AI_SCENARIOS.length);
-    }
-  });
-
-  document.getElementById('btnAiSaveNote').addEventListener('click', function () {
-    var note = (document.getElementById('aiReviewerNote') || {}).value || '';
-    var trimmed = note.trim();
-    if (!trimmed) {
-      auditLog('AI 검토자 메모', '(빈 메모)');
-      return;
-    }
-    auditLog('AI 검토자 메모', trimmed.slice(0, 500));
-    try {
-      var hist = JSON.parse(localStorage.getItem(AI_MEMO_HISTORY_KEY) || '[]');
-      hist.unshift({
-        t: new Date().toISOString(),
-        note: trimmed,
-        summary: lastAiSummaryText.slice(0, 1500),
-      });
-      localStorage.setItem(AI_MEMO_HISTORY_KEY, JSON.stringify(hist.slice(0, 50)));
-    } catch (e) {}
-    renderAiMemoHistory();
-  });
-
-  var aiDraftTimer = null;
-  var taAiMemo = document.getElementById('aiReviewerNote');
-  if (taAiMemo) {
-    taAiMemo.addEventListener('input', function () {
-      if (aiDraftTimer) clearTimeout(aiDraftTimer);
-      aiDraftTimer = setTimeout(function () {
-        try {
-          localStorage.setItem(AI_MEMO_DRAFT_KEY, (taAiMemo.value || '').slice(0, 8000));
-        } catch (e) {}
-      }, 400);
-    });
-  }
-
-  document.getElementById('btnViolationRefresh').addEventListener('click', function () {
-    refreshViolationTable();
-    auditLog('위반 검토', '테이블 새로고침');
-  });
+  document.getElementById('btnViolationRefresh').addEventListener('click', refreshViolationTable);
+  document.getElementById('btnViolationXlsx').addEventListener('click', downloadViolationsAsXlsx);
 
   document.getElementById('btnMonitorFromUpload').addEventListener('click', syncMonitorFromUpload);
   document.getElementById('btnMonitorReset').addEventListener('click', function () {
     monitorRows = MONITOR_SAMPLE.slice();
     renderMonitorTable();
-    auditLog('거래 모니터링', '샘플로 초기화');
   });
 
   var mf = document.getElementById('monitorFilter');
@@ -2331,19 +2160,6 @@
       renderMonitorTable();
     });
   }
-
-  document.getElementById('btnNotifyMarkAll').addEventListener('click', function () {
-    saveNotifs(ensureNotifs().map(function (n) {
-      return Object.assign({}, n, { unread: false });
-    }));
-    renderNotifyList();
-    auditLog('알림', '모두 읽음');
-  });
-
-  document.getElementById('btnAuditClear').addEventListener('click', function () {
-    localStorage.removeItem(AUDIT_KEY);
-    renderAuditTable();
-  });
 
   document.querySelectorAll('.nav-item').forEach(function (el) {
     el.addEventListener('click', function () {
@@ -2400,9 +2216,8 @@
 
   var hash = (location.hash || '#dashboard').replace(/^#/, '');
   if (!PAGE_LABELS[hash]) hash = 'dashboard';
-  showPage(hash, { silent: true });
+  showPage(hash);
   renderMonitorTable();
-  renderAuditTable();
 
   try {
     var qs = new URLSearchParams(window.location.search || '');

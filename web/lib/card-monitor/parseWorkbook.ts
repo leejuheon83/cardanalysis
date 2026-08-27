@@ -2,9 +2,9 @@ import * as XLSX from "xlsx";
 import type { CardPolicy } from "@/lib/card-monitor/policies";
 import { defaultPolicies } from "@/lib/card-monitor/policies";
 import {
-  autoReviewWithPolicies,
   mapHeaders,
   parseAmount,
+  reviewRowsWithGuideline,
   summarizeKpiFromReviews,
   type ReviewResult,
 } from "@/lib/card-monitor/reviewEngine";
@@ -79,22 +79,20 @@ export function parseWorkbookBuffer(
       colMap.idxMerchant >= 0 ? String(line[colMap.idxMerchant] ?? "") : "";
     const dateVal = colMap.idxDate >= 0 ? line[colMap.idxDate] : "";
 
-    const rowForReview = {
-      _amount: amount,
-      _merchant: merchant,
-      _date: dateVal,
-    };
-    const review = autoReviewWithPolicies(rowForReview, policiesList);
     objects.push({
       raw,
       _amount: amount,
       _merchant: merchant,
       _date: dateVal,
-      review,
+      review: null as unknown as ReviewResult,
     });
   }
 
-  const kpi = summarizeKpiFromReviews(objects.map((x) => x.review));
+  // 분할·중복 결제(제8조)는 행 전체를 봐야 하므로 일괄 검토한다.
+  const reviews = reviewRowsWithGuideline(objects, policiesList);
+  for (let i = 0; i < objects.length; i++) objects[i].review = reviews[i];
+
+  const kpi = summarizeKpiFromReviews(reviews);
 
   return {
     sheetName,

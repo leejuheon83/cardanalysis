@@ -25,33 +25,12 @@ export function normalizePolicy(p: Partial<CardPolicy> & Record<string, unknown>
   };
 }
 
+/**
+ * 접대비 운영지침(2026.8.1) 규칙은 reviewEngine 에 내장되어 항상 적용된다.
+ * 여기의 기본값은 「추가 사용자 정의 정책 없음」이다.
+ */
 export function defaultPolicies(): CardPolicy[] {
-  return [
-    normalizePolicy({
-      id: "p1",
-      name: "고액 100만 이상",
-      keyword: "",
-      amountMin: 1000000,
-      timeStart: "",
-      timeEnd: "",
-    }),
-    normalizePolicy({
-      id: "p2",
-      name: "유흥 키워드",
-      keyword: "유흥",
-      amountMin: 0,
-      timeStart: "",
-      timeEnd: "",
-    }),
-    normalizePolicy({
-      id: "p3",
-      name: "주말 야간",
-      keyword: "BAR",
-      amountMin: 300000,
-      timeStart: "",
-      timeEnd: "",
-    }),
-  ];
+  return [];
 }
 
 /** 요청 JSON 등 — null/비배열 시 기본 정책, 빈 배열은 “사용자 정의 없음” */
