@@ -14,14 +14,20 @@ const MAX_POLICIES = 200;
 const hasBlob = () =>
   !!process.env.BLOB_READ_WRITE_TOKEN || !!process.env.BLOB_STORE_ID;
 
+// 신형 네이티브 스토어는 private, 구형 토큰 스토어는 public 전용
+const blobAccess = () =>
+  process.env.BLOB_STORE_ID ? ("private" as const) : ("public" as const);
+
 async function readPolicies(): Promise<CardPolicy[]> {
   if (hasBlob()) {
-    const { list } = await import("@vercel/blob");
-    const { blobs } = await list({ prefix: BLOB_PATH, limit: 1 });
-    if (!blobs.length) return [];
-    const res = await fetch(blobs[0].url, { cache: "no-store" });
-    if (!res.ok) return [];
-    const json = (await res.json().catch(() => null)) as unknown;
+    const { get } = await import("@vercel/blob");
+    const result = await get(BLOB_PATH, {
+      access: blobAccess(),
+      useCache: false,
+    }).catch(() => null);
+    if (!result || !result.stream) return [];
+    const text = await new Response(result.stream).text();
+    const json = JSON.parse(text) as unknown;
     return Array.isArray(json)
       ? json.map((p) => normalizePolicy(p as Partial<CardPolicy>))
       : [];
@@ -41,7 +47,7 @@ async function writePolicies(policies: CardPolicy[]): Promise<void> {
   if (hasBlob()) {
     const { put } = await import("@vercel/blob");
     await put(BLOB_PATH, JSON.stringify(policies), {
-      access: "public",
+      access: blobAccess(),
       contentType: "application/json",
       addRandomSuffix: false,
       allowOverwrite: true,
